@@ -1,0 +1,13 @@
+{
+    "name": "mightywizard83/wows-tools",
+    "description": "Description of project wows-tools.",
+    "authors": [
+        {
+            "name": "MWD",
+            "email": "your@email.here"
+        }
+    ],
+    "require": {
+         "wargaming/api": "dev-master"
+    }
+}
