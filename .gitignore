@@ -1,3 +1,10 @@
+# Project Files
 /nbproject/private/
-/vendor/
+
+# Composer files
+/composer.phar
 /composer.lock
+/vendor/
+
+#Other files
+/test.php
