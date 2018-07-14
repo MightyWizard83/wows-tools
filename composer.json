@@ -8,6 +8,6 @@
         }
     ],
     "require": {
-         "wargaming/api": "dev-master"
+         "artur-stepien/wargaming-papi": "dev-master"
     }
 }
