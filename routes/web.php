@@ -18,3 +18,13 @@ Route::get('/', function () {
 Auth::routes();
 
 Route::get('/home', 'HomeController@index')->name('home');
+
+Route::get('/hello', function() {
+    return 'Hello World';
+});
+Route::post('/post-url', function() {
+    return 'Post is a beautiful method';
+});
+Route::get('/get-url', function() {
+    return 'Get is a beautiful method';
+});
