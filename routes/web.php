@@ -19,6 +19,9 @@ Auth::routes();
 
 Route::get('/home', 'HomeController@index')->name('home');
 
+Route::get('auth/wargaming', 'AuthController@redirectToWargaming')->name('auth.wargaming');
+Route::get('auth/wargaming/callback', 'AuthController@handleWargamingCallback')->name('auth.wargaming.handle');
+
 Route::get('/hello', function() {
     return 'Hello World';
 });
