@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use Azate\LaravelWargamingAuth\WargamingAuth;
+use MightyWizard83\LaravelWargamingAuth\WargamingAuth;
 
 class AuthController extends Controller
 {
@@ -41,8 +41,9 @@ class AuthController extends Controller
         if ($this->wargaming->validate()) {
             $user = $this->wargaming->user();
 
-            //
-
+            //$user['id'];
+            //$user['nickname'] ;
+            
             return redirect('/');
         }
 
