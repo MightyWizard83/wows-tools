@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use MightyWizard83\LaravelWargamingAuth\WargamingAuth;
+use App\User;
+use Illuminate\Support\Facades\Auth;
 
 class AuthController extends Controller
 {
@@ -39,10 +41,23 @@ class AuthController extends Controller
     public function handleWargamingCallback()
     {
         if ($this->wargaming->validate()) {
-            $user = $this->wargaming->user();
+            $wgUser = $this->wargaming->user();
 
             //$user['id'];
             //$user['nickname'] ;
+            
+            $user = User::where('wargamingid', $wgUser['id'])->first();
+            if (is_null($user)) {
+                $user = User::create([
+                    'name' => $wgUser['id'] . "-" . $wgUser['nickname'],
+                    'nickname' => $wgUser['nickname'],
+                    'wargamingid'  => $wgUser['id'],
+                    'password'  => $wgUser['id'],
+                    'email'  => $wgUser['id']
+                ]);
+            }
+            Auth::login($user, true);
+            
             
             return redirect('/');
         }
