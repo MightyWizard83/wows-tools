@@ -16,7 +16,7 @@ class CreatePlayersTable extends Migration
         Schema::create('players', function (Blueprint $table) {
             $table->increments('id');
             $table->string('realm', 3)->nullable(false);
-            $table->unsignedInteger('tenant')->nullable(false)->default(1);
+//            $table->unsignedInteger('tenant')->nullable(false)->default(1);
             
             $table->unsignedInteger('account_id')->nullable(false);
             

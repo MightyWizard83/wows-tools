@@ -31,3 +31,20 @@ Route::post('/post-url', function() {
 Route::get('/get-url', function() {
     return 'Get is a beautiful method';
 });
+
+
+/**
+ * Display All Players
+ */
+Route::get('/players', function () {
+    $players = App\Player::orderBy('created_at', 'asc')->get();
+
+    return view('players', [
+        'players' => $players
+    ]);
+});
+
+
+Route::get('/player/{id}', function () {
+    //
+});
