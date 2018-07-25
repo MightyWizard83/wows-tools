@@ -12,6 +12,7 @@
     ],
     "require": {
         "MightyWizard83/laravel-wargaming-auth": "1.0.2",
+        "artur-stepien/wargaming-papi": "dev-master",
         "php": "^7.1.3",
         "fideloper/proxy": "^4.0",
         "laravel/framework": "5.6.*",
