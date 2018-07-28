@@ -77,7 +77,7 @@ Route::get('/sync_player/{id}', function ($id) {
         $string = file_get_contents("../storage/app/public/ratings-expected.json");
         $ratingsExpected = json_decode($string, true);
 
-        var_dump($ratingsExpected);
+//        var_dump($ratingsExpected);
 
 //        $serachString = 'MightyWizard';
 //
