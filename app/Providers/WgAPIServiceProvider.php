@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+//use \Wargaming\API;
 use Illuminate\Support\ServiceProvider;
 
 class WgAPIServiceProvider extends ServiceProvider
@@ -11,7 +12,7 @@ class WgAPIServiceProvider extends ServiceProvider
      *
      * @var bool
      */
-    protected $defer = true;
+//    protected $defer = true;
     
     /**
      * Bootstrap services.
@@ -30,8 +31,16 @@ class WgAPIServiceProvider extends ServiceProvider
      */
     public function register()
     {
-        $this->app->singleton(Wargaming\API::class, function ($app) {
-            return new Wargaming\API('268c4563cd5f273c94aca7b3faf2cc57', Wargaming\LANGUAGE_ENGLISH, 'api.worldofwarships.eu'); //WOWS TOOLS TEST
+        
+//        $api = new HelpSpot\API(new HttpClient);
+//
+//        $this->app->instance('HelpSpot\API', $api);
+        
+//        $api = new \Wargaming\API('268c4563cd5f273c94aca7b3faf2cc57', Wargaming\LANGUAGE_ENGLISH, 'api.worldofwarships.eu'); //WOWS TOOLS TEST
+//        $this->app->instance('\Wargaming\API', $api);
+        
+        $this->app->singleton('Wargaming\API', function ($app) {
+            return new \Wargaming\API('268c4563cd5f273c94aca7b3faf2cc57', \Wargaming\LANGUAGE_ENGLISH, 'api.worldofwarships.eu'); //WOWS TOOLS TEST
         });
     }
     
@@ -40,8 +49,8 @@ class WgAPIServiceProvider extends ServiceProvider
      *
      * @return array
      */
-    public function provides()
-    {
-        return [Wargaming\API::class];
-    }
+//    public function provides()
+//    {
+//        return [\Wargaming\API::class];
+//    }
 }

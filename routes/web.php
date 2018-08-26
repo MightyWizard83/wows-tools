@@ -56,8 +56,9 @@ Route::get('/update_ratings', function () {
 });
 
 
+Route::get('sync_player/{id}', 'WgAPIController@syncPlayer');
 
-Route::get('/sync_player/{id}', function ($id) {
+Route::get('/sync_player_OLD/{id}', function ($id) {
 
 
     

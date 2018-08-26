@@ -150,7 +150,8 @@ return [
         /*
          * Package Service Providers...
          */
-
+        App\Providers\WgAPIServiceProvider::class,
+        
         /*
          * Application Service Providers...
          */
@@ -163,7 +164,7 @@ return [
         /*
          * Custom Service Providers
          */
-        App\Providers\WgAPIServiceProvider::class,
+        
 
     ],
 
