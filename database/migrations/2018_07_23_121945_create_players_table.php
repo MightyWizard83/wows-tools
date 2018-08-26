@@ -16,24 +16,24 @@ class CreatePlayersTable extends Migration
         Schema::create('players', function (Blueprint $table) {
             $table->increments('id');
             $table->string('realm', 3)->nullable(false);
-            $table->unsignedInteger('tenant')->nullable(false)->default(1);
+//            $table->unsignedInteger('tenant')->nullable(false)->default(1);
             
-            $table->unsignedInteger('account_id')->nullable(false);
+            $table->unsignedInteger('account_id')->nullable();
             
             $table->boolean('hidden_profile');
             $table->unsignedInteger('karma');
             
-            $table->timestamp('last_battle_time'); //Warning. The field will be disabled.
+            $table->timestamp('last_battle_time')->nullable(); //Warning. The field will be disabled.
 
             $table->unsignedInteger('leveling_points');
             $table->unsignedInteger('leveling_tier');
             
-            $table->timestamp('logout_at');
+            $table->timestamp('logout_at')->nullable();
 
             $table->string('nickname', 25);
 
-            $table->timestamp('wg_stats_updated_at');
-            $table->timestamp('wg_updated_at');            
+            $table->timestamp('wg_stats_updated_at')->nullable();
+            $table->timestamp('wg_updated_at')->nullable();            
             
             $table->timestamps();
         });

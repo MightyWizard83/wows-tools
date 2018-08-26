@@ -31,3 +31,35 @@ Route::post('/post-url', function() {
 Route::get('/get-url', function() {
     return 'Get is a beautiful method';
 });
+
+
+/**
+ * Display All Players
+ */
+Route::get('/players', function () {
+    $players = App\Player::orderBy('created_at', 'asc')->get();
+
+    return view('players', [
+        'players' => $players
+    ]);
+});
+
+Route::get('/update_ratings', function () {
+
+    $coefficients = file_get_contents("https://api.eu.warships.today/json/wows/ratings/warships-today-rating/coefficients");
+    //check if error && 200 3xx
+    file_put_contents(public_path('../storage/app/public/coefficients.json'), $coefficients);
+    
+    $ratings = file_get_contents("https://wows-numbers.com/personal/rating/expected/json/");
+    //check if error && 200 3xx
+    file_put_contents(public_path('../storage/app/public/ratings-expected.json'), $ratings);
+});
+
+
+Route::get('sync_player/{id}', 'WgAPIController@syncPlayer');
+
+Route::get('sync_player_test/{id}', 'WgAPIController@syncPlayerTest');
+
+Route::get('/player/{id}', function () {
+    //
+});
