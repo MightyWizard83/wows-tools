@@ -49,7 +49,7 @@ class WgAPIController extends Controller
                         );
             
             foreach ($data->{$account_id} as $ship_stats) {
-                $ship_expected_stats = $ratingsExpected['data'][$ship_stats->ship_id];
+                $ship_expected_stats = $ratingsExpected['data'][''.$ship_stats->ship_id];
 
                 $shipPR = $this->computeShipPR($ship_stats, $ship_expected_stats);
 
