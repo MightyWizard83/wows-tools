@@ -53,6 +53,9 @@ class WgAPIController extends Controller
                         );
             
             //todo check if player found
+            if (!isset($accountData->{$account_id})) {
+                abort(404);
+            }
             
             $player = Player::byRealm($realm)->byAccountId($account_id)->firstOrNew(['realm' => $realm, 'account_id' => $account_id]);
 
