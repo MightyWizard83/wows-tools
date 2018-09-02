@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Player;
 use \Wargaming\API;
 use Illuminate\Support\Facades\App;
 
@@ -39,17 +40,44 @@ class WgAPIController extends Controller
     {
         try {
 
+            $realm = 'eu';
+            
             $ratingsExpected = app()->make('RatingsExpected');
  
             $account_id = $id;
 
+            
+            $accountData = $this->api->get('wows/account/info', 
+                        ['account_id'=>$account_id, 
+                            'extra'=> '']
+                        );
+            
+            //todo check if player found
+            
+            $player = Player::byRealm($realm)->byAccountId($account_id)->firstOrNew(['realm' => $realm, 'account_id' => $account_id]);
+
+            $last_battle_time = $accountData->{$account_id}->last_battle_time;
+            $logout_at = $accountData->{$account_id}->logout_at;
+            $wg_stats_updated_at = $accountData->{$account_id}->stats_updated_at;
+            $wg_updated_at = $accountData->{$account_id}->updated_at;        
+            
+            $player->hidden_profile     = $accountData->{$account_id}->hidden_profile;
+            $player->karma              = 0;
+            $player->last_battle_time   = new \DateTime(("@$last_battle_time"));
+            $player->leveling_points    = $accountData->{$account_id}->leveling_points;
+            $player->leveling_tier      = $accountData->{$account_id}->leveling_tier;
+            $player->logout_at          = new \DateTime(("@$logout_at"));
+            $player->nickname           = $accountData->{$account_id}->nickname;
+            $player->wg_stats_updated_at = new \DateTime(("@$wg_stats_updated_at"));
+            $player->wg_updated_at      = new \DateTime(("@$wg_updated_at"));
+            
             $data = $this->api->get('wows/ships/stats', 
                         ['account_id'=>$account_id, 
                             'extra'=> 'club,oper_div,oper_div_hard,oper_solo,pve,pve_div2,pve_div3,pve_solo,pvp_div2,pvp_div3,pvp_solo,rank_div2,rank_div3,rank_solo']
                         );
             
             foreach ($data->{$account_id} as $ship_stats) {
-                $ship_expected_stats = $ratingsExpected['data'][''.$ship_stats->ship_id];
+                $ship_expected_stats = $ratingsExpected[''.$ship_stats->ship_id];
 
                 $shipPR = $this->computeShipPR($ship_stats, $ship_expected_stats);
 
@@ -58,6 +86,8 @@ class WgAPIController extends Controller
                 echo "<strong>Avg Damage: " . round($shipPR["avgDamage"]) . "</strong><br />\n";
                 echo "<strong>Avg frags: " . round($shipPR["avgFrags"],2) . "</strong><br />\n";
             }
+            
+            $player->save();
 
         } catch (Exception $e) {
                 die($e->getMessage());
