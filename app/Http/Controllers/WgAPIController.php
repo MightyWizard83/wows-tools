@@ -57,7 +57,7 @@ class WgAPIController extends Controller
                 abort(404);
             }
             
-            $player = Player::byRealm($realm)->byAccountId($account_id)->firstOrNew(['realm' => $realm, 'account_id' => $account_id]);
+            $player = Player::byRealm($realm)->byAccountId($account_id)->firstOrNew(['realm' => $realm, 'id' => $account_id]);
 
             $last_battle_time = $accountData->{$account_id}->last_battle_time;
             $logout_at = $accountData->{$account_id}->logout_at;
