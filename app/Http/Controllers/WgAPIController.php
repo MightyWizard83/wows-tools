@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Player;
+use App\ShipStat;
+use App\ShipStatDetail;
 use \Wargaming\API;
 use Illuminate\Support\Facades\App;
 
@@ -58,7 +60,13 @@ class WgAPIController extends Controller
             }
             
             $player = Player::byRealm($realm)->byAccountId($account_id)->firstOrNew(['realm' => $realm, 'id' => $account_id]);
-
+            
+            //firstOrNew Workaround
+            if (!$player->exists) {
+                $player->save();
+                $player = Player::byRealm($realm)->byAccountId($account_id)->firstOrNew(['realm' => $realm, 'id' => $account_id]);
+            }
+            
             $last_battle_time = $accountData->{$account_id}->last_battle_time;
             $logout_at = $accountData->{$account_id}->logout_at;
             $wg_stats_updated_at = $accountData->{$account_id}->stats_updated_at;
@@ -80,7 +88,25 @@ class WgAPIController extends Controller
                         );
             
             foreach ($data->{$account_id} as $ship_stats) {
+                
                 $ship_expected_stats = $ratingsExpected[''.$ship_stats->ship_id];
+                
+                $shipStat = ShipStat::byAccountId($account_id)->byShipId($ship_stats->ship_id)->firstOrNew(['account_id' => $account_id, 'ship_id' => $ship_stats->ship_id]);
+            
+                //firstOrNew Workaround
+                if (!$shipStat->exists) {
+                    $shipStat->save();
+                    $shipStat = ShipStat::byAccountId($account_id)->byShipId($ship_stats->ship_id)->firstOrNew(['account_id' => $account_id, 'ship_id' => $ship_stats->ship_id]);
+                }
+                
+                $last_battle_time = $ship_stats->last_battle_time;
+                $wg_updated_at = $ship_stats->updated_at;  
+                
+                $shipStat->last_battle_time     =    new \DateTime(("@$last_battle_time"));
+                $shipStat->distance             =    $ship_stats->distance;
+                $shipStat->wg_updated_at        =    new \DateTime(("@$wg_updated_at"));
+                $shipStat->battles             =    $ship_stats->battles;
+
 
                 $shipPR = $this->computeShipPR($ship_stats, $ship_expected_stats);
 
@@ -88,6 +114,9 @@ class WgAPIController extends Controller
                 echo "<strong>Win Rate: " . round($shipPR["wr"], 2) . "%</strong><br />\n";
                 echo "<strong>Avg Damage: " . round($shipPR["avgDamage"]) . "</strong><br />\n";
                 echo "<strong>Avg frags: " . round($shipPR["avgFrags"],2) . "</strong><br />\n";
+                
+                
+                $shipStat->save();
             }
             
             $player->save();

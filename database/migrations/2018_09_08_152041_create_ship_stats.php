@@ -16,6 +16,18 @@ class CreateShipStats extends Migration
         Schema::create('ship_stats', function (Blueprint $table) {
             $table->increments('id');
             
+//            Win Rate: 76.47%
+//            Avg Damage: 59310
+//            Avg frags: 0.82
+            
+            /* GENERIC*/
+            $table->timestamp('last_battle_time')->nullable();
+            $table->unsignedInteger('account_id')->index();
+            $table->unsignedInteger('distance')->nullable();
+            $table->timestamp('wg_updated_at')->nullable();
+            $table->unsignedInteger('battles')->nullable();
+            $table->unsignedInteger('ship_id')->index();
+            
             //"club"
             
             //"oper_div"
@@ -62,6 +74,13 @@ class CreateShipStats extends Migration
             $table->timestamp(      'pve_solo_last_battle_time')->nullable();
             $table->unsignedInteger('pve_solo_ship_stat_details_id')->nullable()->index();
             
+            //"pvp"
+            $table->unsignedInteger('pvp_pr')->nullable();
+            $table->unsignedInteger('pvp_wtr')->nullable();
+            $table->unsignedInteger('pvp_battles')->nullable();
+            $table->timestamp(      'pvp_last_battle_time')->nullable();
+            $table->unsignedInteger('pvp_ship_stat_details_id')->nullable()->index();
+            
             //"pvp_div2"
             $table->unsignedInteger('pvp_div2_pr')->nullable();
             $table->unsignedInteger('pvp_div2_wtr')->nullable();
@@ -93,14 +112,6 @@ class CreateShipStats extends Migration
             $table->unsignedInteger('rank_solo_battles')->nullable();
             $table->timestamp(      'rank_solo_last_battle_time')->nullable();
             $table->unsignedInteger('rank_solo_ship_stat_details_id')->nullable()->index();
-            
-            /* GENERIC*/
-            $table->timestamp('last_battle_time');
-            $table->unsignedInteger('account_id')->index();
-            $table->unsignedInteger('distance');
-            $table->timestamp('wg_updated_at');
-            $table->unsignedInteger('battles');
-            $table->unsignedInteger('ship_id')->index();
             
             
             $table->foreign('account_id')->references('id')->on('players');
