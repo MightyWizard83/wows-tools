@@ -59,12 +59,9 @@ class WgAPIController extends Controller
                 abort(404);
             }
             
-            $player = Player::byRealm($realm)->byAccountId($account_id)->firstOrNew(['realm' => $realm, 'id' => $account_id]);
-            
-            //firstOrNew Workaround
-            if (!$player->exists) {
-                $player->save();
-                $player = Player::byRealm($realm)->byAccountId($account_id)->firstOrNew(['realm' => $realm, 'id' => $account_id]);
+            $player = Player::byRealm($realm)->byAccountId($account_id)->firstOrCreate(['realm' => $realm, 'id' => $account_id]);
+            if ($player->wasRecentlyCreated === true) {
+                $player = Player::byRealm($realm)->byAccountId($account_id)->first();
             }
             
             $last_battle_time = $accountData->{$account_id}->last_battle_time;
@@ -91,12 +88,9 @@ class WgAPIController extends Controller
                 
                 $ship_expected_stats = $ratingsExpected[''.$ship_stats->ship_id];
                 
-                $shipStat = ShipStat::byAccountId($account_id)->byShipId($ship_stats->ship_id)->firstOrNew(['account_id' => $account_id, 'ship_id' => $ship_stats->ship_id]);
-            
-                //firstOrNew Workaround
-                if (!$shipStat->exists) {
-                    $shipStat->save();
-                    $shipStat = ShipStat::byAccountId($account_id)->byShipId($ship_stats->ship_id)->firstOrNew(['account_id' => $account_id, 'ship_id' => $ship_stats->ship_id]);
+                $shipStat = ShipStat::byAccountId($account_id)->byShipId($ship_stats->ship_id)->firstOrCreate(['account_id' => $account_id, 'ship_id' => $ship_stats->ship_id]);
+                if ($shipStat->wasRecentlyCreated === true) {
+                    $shipStat = ShipStat::byAccountId($account_id)->byShipId($ship_stats->ship_id)->first();
                 }
                 
                 $last_battle_time = $ship_stats->last_battle_time;

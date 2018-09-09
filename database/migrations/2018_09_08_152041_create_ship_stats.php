@@ -19,6 +19,8 @@ class CreateShipStats extends Migration
 //            Win Rate: 76.47%
 //            Avg Damage: 59310
 //            Avg frags: 0.82
+//            Avg. experience
+//            Avg. planes Destroyed
             
             /* GENERIC*/
             $table->timestamp('last_battle_time')->nullable();
