@@ -33,22 +33,22 @@ class CreateShipStats extends Migration
             //"club"
             
             //"oper_div"
-            $table->decimal(        'oper_div_wr', 5, 2)->nullable();
-            $table->unsignedInteger('oper_div_pr')->nullable();
-            $table->unsignedInteger('oper_div_wtr')->nullable();
-            $table->unsignedInteger('oper_div_battles')->nullable();
-            $table->timestamp(      'oper_div_last_battle_time')->nullable();
-            $table->unsignedInteger('oper_div_ship_stat_details_id')->nullable()->index();
+//            $table->decimal(        'oper_div_wr', 5, 2)->nullable();
+//            $table->unsignedInteger('oper_div_pr')->nullable();
+//            $table->unsignedInteger('oper_div_wtr')->nullable();
+//            $table->unsignedInteger('oper_div_battles')->nullable();
+//            $table->timestamp(      'oper_div_last_battle_time')->nullable();
+//            $table->unsignedInteger('oper_div_ship_stat_details_id')->nullable()->index();
             
             //"oper_div_hard"
             
             //"oper_solo"
-            $table->decimal(        'oper_solo_wr', 5, 2)->nullable();
-            $table->unsignedInteger('oper_solo_pr')->nullable();
-            $table->unsignedInteger('oper_solo_wtr')->nullable();
-            $table->unsignedInteger('oper_solo_battles')->nullable();
-            $table->timestamp(      'oper_solo_last_battle_time')->nullable();
-            $table->unsignedInteger('oper_solo_ship_stat_details_id')->nullable()->index();
+//            $table->decimal(        'oper_solo_wr', 5, 2)->nullable();
+//            $table->unsignedInteger('oper_solo_pr')->nullable();
+//            $table->unsignedInteger('oper_solo_wtr')->nullable();
+//            $table->unsignedInteger('oper_solo_battles')->nullable();
+//            $table->timestamp(      'oper_solo_last_battle_time')->nullable();
+//            $table->unsignedInteger('oper_solo_ship_stat_details_id')->nullable()->index();
             
             //"pve"
             $table->decimal(        'pve_wr', 5, 2)->nullable();
@@ -130,10 +130,8 @@ class CreateShipStats extends Migration
             $table->foreign('account_id')->references('id')->on('players');
             //TODO:  $table->foreign('ship_id')
             
-            
-            
-            $table->foreign('oper_div_ship_stat_details_id')->references('id')->on('ship_stat_details');
-            $table->foreign('oper_solo_ship_stat_details_id')->references('id')->on('ship_stat_details');
+//            $table->foreign('oper_div_ship_stat_details_id')->references('id')->on('ship_stat_details');
+//            $table->foreign('oper_solo_ship_stat_details_id')->references('id')->on('ship_stat_details');
             
             $table->foreign('pve_ship_stat_details_id')->references('id')->on('ship_stat_details');
             $table->foreign('pve_div2_ship_stat_details_id')->references('id')->on('ship_stat_details');

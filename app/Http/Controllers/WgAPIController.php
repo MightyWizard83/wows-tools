@@ -13,11 +13,46 @@ class WgAPIController extends Controller
     
     protected $api;
     protected $ratingsExpected;
+    protected $syncedStats;
+    protected $syncedApiStats;
     
     public function __construct(API $api)
     {
         $this->api = $api;
         $this->ratingsExpected = App::getFacadeRoot()->make('RatingsExpected');
+        $this->syncedStats = array(
+//            "club",
+//        "oper_div",
+//        "oper_div_hard",
+//        "oper_solo",
+        "pve",
+        "pve_div2",
+        "pve_div3",
+        "pve_solo",
+        "pvp",
+        "pvp_div2",
+        "pvp_div3",
+        "pvp_solo",
+//        "rank_div2",
+//        "rank_div3",
+        "rank_solo");
+
+        $this->syncedApiStats = array(
+//            "club",
+//        "oper_div",
+//        "oper_div_hard",
+//        "oper_solo",
+        "pve",
+        "pve_div2",
+        "pve_div3",
+        "pve_solo",
+//        "pvp",
+        "pvp_div2",
+        "pvp_div3",
+        "pvp_solo",
+//        "rank_div2",
+//        "rank_div3",
+        "rank_solo");
     }
     
     /**
@@ -81,7 +116,7 @@ class WgAPIController extends Controller
             
             $data = $this->api->get('wows/ships/stats', 
                         ['account_id'=>$account_id, 
-                            'extra'=> 'club,oper_div,oper_div_hard,oper_solo,pve,pve_div2,pve_div3,pve_solo,pvp_div2,pvp_div3,pvp_solo,rank_div2,rank_div3,rank_solo']
+                            'extra'=> implode(",",$this->syncedApiStats)]
                         );
             
             foreach ($data->{$account_id} as $ship_stats) {
@@ -101,14 +136,52 @@ class WgAPIController extends Controller
                 $shipStat->wg_updated_at        =    new \DateTime(("@$wg_updated_at"));
                 $shipStat->battles             =    $ship_stats->battles;
 
-                $type = 'pvp';
-                if ($ship_stats->$type->battles > 0) {
-                
-                    $shipStatDetail = ShipStatDetail::byAccountId($account_id)->byShipId($ship_stats->ship_id)->byType($type)->firstOrCreate(['account_id' => $account_id, 'ship_id' => $ship_stats->ship_id, 'type' => $type]);
-                    if ($shipStatDetail->wasRecentlyCreated === true) {
-                        $shipStatDetail = ShipStatDetail::byAccountId($account_id)->byShipId($ship_stats->ship_id)->byType($type)->first();
+                foreach ($this->syncedStats as $type) {
+                    
+                    if ($ship_stats->$type->battles > 0) {
+
+                        $shipStatDetail = ShipStatDetail::byAccountId($account_id)->byShipId($ship_stats->ship_id)->byType($type)->firstOrCreate(['account_id' => $account_id, 'ship_id' => $ship_stats->ship_id, 'type' => $type]);
+                        if ($shipStatDetail->wasRecentlyCreated === true) {
+                            $shipStatDetail = ShipStatDetail::byAccountId($account_id)->byShipId($ship_stats->ship_id)->byType($type)->first();
+                        }
+
+                        $this->updateShipStatDetail($shipStatDetail);
+
+                        $shipRating = $this->computeShipRating($ship_stats->$type, $ship_expected_stats);
+
+                        $this->updateShipStat($type, $shipStat, $shipStatDetail, $shipRating, $ship_stats->$type);
+
+                        $shipStatDetail->save();
                     }
+                }
                 
+                $shipStat->save();
+            }
+            
+            $player->save();
+
+        } catch (Exception $e) {
+                die($e->getMessage());
+        }
+
+    }
+    
+    private function updateShipStat($type, &$shipStat, $shipStatDetail, $shipRating, $wg_ship_stats_type) {
+//        echo "<h2>".$ship_stats->ship_id." PR: " . round($shipRating["pr"]) . "</h2>";
+//        echo "<strong>Win Rate: " . round($shipRating["wr"], 2) . "%</strong><br />\n";
+//        echo "<strong>Avg Damage: " . round($shipRating["avgDamage"]) . "</strong><br />\n";
+//        echo "<strong>Avg frags: " . round($shipRating["avgFrags"],2) . "</strong><br />\n";
+
+        $shipStat->{$type.'_wr'}                = $shipRating["wr"];
+        $shipStat->{$type.'_pr'}                = $shipRating["pr"];
+        $shipStat->{$type.'_wtr'}               = null;                 //TODO
+        $shipStat->{$type.'_battles'}           = $wg_ship_stats_type->battles;
+        $shipStat->{$type.'_last_battle_time'}  = null;                 //TODO
+        $shipStat->{$type.'_ship_stat_details_id'} = $shipStatDetail->id;
+    }
+    
+    private function updateShipStatDetail(&$shipStatDetail) {
+        //TODO
 //                $table->string('type', 9);
 //            
 //                $table->unsignedInteger('max_xp');
@@ -178,41 +251,11 @@ class WgAPIController extends Controller
 //                $table->timestamp('wg_updated_at');
 //                $table->unsignedInteger('ship_id')->index();
 //
-//                $table->foreign('account_id')->references('id')->on('players');
-                
-                    $shipStatDetail->save();
-                    
-                    
-                    $randomShipPR = $this->computeShipPR($ship_stats->$type, $ship_expected_stats);
-
-                    echo "<h2>".$ship_stats->ship_id." PR: " . round($randomShipPR["pr"]) . "</h2>";
-                    echo "<strong>Win Rate: " . round($randomShipPR["wr"], 2) . "%</strong><br />\n";
-                    echo "<strong>Avg Damage: " . round($randomShipPR["avgDamage"]) . "</strong><br />\n";
-                    echo "<strong>Avg frags: " . round($randomShipPR["avgFrags"],2) . "</strong><br />\n";
-                    
-                    $shipStat->{$type.'_wr'}                = $randomShipPR["wr"];
-                    $shipStat->{$type.'_pr'}                = $randomShipPR["pr"];
-                    $shipStat->{$type.'_wtr'}               = null;
-                    $shipStat->{$type.'_battles'}           = $ship_stats->$type->battles;
-                    $shipStat->{$type.'_last_battle_time'}  = null;
-                    $shipStat->{$type.'_ship_stat_details_id'} = $shipStatDetail->id;                    
-                    
-                }
-                
-                $shipStat->save();
-            }
-            
-            $player->save();
-
-        } catch (Exception $e) {
-                die($e->getMessage());
-        }
-
+//                $table->foreign('account_id')->references('id')->on('players');        
     }
     
-    private function computeShipPR($account_stats, $ship_expected_stats)
+    private function computeShipRating($account_stats, $ship_expected_stats)
     {
-
         //TODO: Fix Division by zero
         $battles = $account_stats->battles > 0 ? $account_stats->battles : 1;
         $damage_dealt = $account_stats->damage_dealt;
