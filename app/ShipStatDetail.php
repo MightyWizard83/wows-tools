@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class ShipStatDetail extends Model
 {
-    protected $fillable = ['account_id','ship_id'];
+    protected $fillable = ['account_id','ship_id','type'];
     
     /**
      * The table associated with the model.
@@ -23,6 +23,11 @@ class ShipStatDetail extends Model
     public function scopeByShipId($query, $shipId)
     {
         return $query->where('ship_id', $shipId);
+    }
+    
+    public function scopeByType($query, $type)
+    {
+        return $query->where('type', $type);
     }
 //    
 //    public function scopeByDate($query, $date)

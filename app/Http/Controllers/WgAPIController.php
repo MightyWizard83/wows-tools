@@ -101,14 +101,96 @@ class WgAPIController extends Controller
                 $shipStat->wg_updated_at        =    new \DateTime(("@$wg_updated_at"));
                 $shipStat->battles             =    $ship_stats->battles;
 
+                if ($ship_stats->pvp->battles > 0) {
+                    $randomShipPR = $this->computeShipPR($ship_stats->pvp, $ship_expected_stats);
 
-                $shipPR = $this->computeShipPR($ship_stats, $ship_expected_stats);
-
-                echo "<h2>".$ship_stats->ship_id." PR: " . round($shipPR["pr"]) . "</h2>";
-                echo "<strong>Win Rate: " . round($shipPR["wr"], 2) . "%</strong><br />\n";
-                echo "<strong>Avg Damage: " . round($shipPR["avgDamage"]) . "</strong><br />\n";
-                echo "<strong>Avg frags: " . round($shipPR["avgFrags"],2) . "</strong><br />\n";
+                    echo "<h2>".$ship_stats->ship_id." PR: " . round($randomShipPR["pr"]) . "</h2>";
+                    echo "<strong>Win Rate: " . round($randomShipPR["wr"], 2) . "%</strong><br />\n";
+                    echo "<strong>Avg Damage: " . round($randomShipPR["avgDamage"]) . "</strong><br />\n";
+                    echo "<strong>Avg frags: " . round($randomShipPR["avgFrags"],2) . "</strong><br />\n";
+                    
+                    
+                    $type = 'pvp';
                 
+                    $shipStatDetail = ShipStatDetail::byAccountId($account_id)->byShipId($ship_stats->ship_id)->byType($type)->firstOrCreate(['account_id' => $account_id, 'ship_id' => $ship_stats->ship_id, 'type' => $type]);
+                    if ($shipStatDetail->wasRecentlyCreated === true) {
+                        $shipStatDetail = ShipStatDetail::byAccountId($account_id)->byShipId($ship_stats->ship_id)->byType($type)->first();
+                    }
+                
+//                $table->string('type', 9);
+//            
+//                $table->unsignedInteger('max_xp');
+//                $table->unsignedInteger('damage_to_buildings');
+//
+//                /*main_battery*/
+//                $table->smallInteger('main_battery_max_frags_battle');
+//                $table->unsignedInteger('main_battery_frags');
+//                $table->unsignedInteger('main_battery_hits');
+//                $table->unsignedInteger('main_battery_shots');
+//
+//                $table->unsignedInteger('suppressions_count');
+//                $table->unsignedInteger('max_damage_scouting');
+//                $table->unsignedInteger('art_agro');
+//                $table->unsignedInteger('ships_spotted');
+//
+//                /*second_battery*/
+//                $table->smallInteger('second_battery_max_frags_battle');
+//                $table->unsignedInteger('second_battery_frags');
+//                $table->unsignedInteger('second_battery_hits');
+//                $table->unsignedInteger('second_battery_shots');
+//
+//                $table->unsignedInteger('xp');
+//                $table->unsignedInteger('survived_battles');
+//                $table->unsignedInteger('dropped_capture_points');
+//                $table->unsignedInteger('max_damage_dealt_to_buildings');
+//                $table->unsignedInteger('torpedo_agro');
+//                $table->unsignedInteger('draws');
+//                $table->unsignedInteger('battles_since_510');
+//                $table->unsignedInteger('planes_killed');
+//                $table->unsignedInteger('battles');
+//                $table->smallInteger('max_ships_spotted');
+//                $table->unsignedInteger('team_capture_points');
+//                $table->unsignedInteger('frags');
+//                $table->unsignedInteger('damage_scouting');
+//                $table->unsignedInteger('max_total_agro');
+//                $table->unsignedInteger('max_frags_battle');
+//                $table->unsignedInteger('capture_points');
+//
+//                /*ramming*/
+//                $table->smallInteger('ramming_max_frags_battle');
+//                $table->unsignedInteger('ramming_frags');
+//
+//                /*torpedoes*/
+//                $table->smallInteger('torpedoes_max_frags_battle');
+//                $table->unsignedInteger('torpedoes_frags');
+//                $table->unsignedInteger('torpedoes_hits');
+//                $table->unsignedInteger('torpedoes_shots');
+//
+//                /*aircraft*/
+//                $table->smallInteger('aircraft_max_frags_battle');
+//                $table->unsignedInteger('aircraft_frags');
+//
+//                $table->unsignedInteger('survived_wins');
+//                $table->unsignedInteger('max_damage_dealt');
+//                $table->unsignedInteger('wins');
+//                $table->unsignedInteger('losses');
+//                $table->unsignedInteger('damage_dealt');
+//                $table->smallInteger('max_planes_killed');
+//                $table->unsignedInteger('max_suppressions_count');
+//                $table->unsignedInteger('team_dropped_capture_points');
+//                $table->unsignedInteger('battles_since_512');
+//
+//                /* GENERIC*/
+//                $table->timestamp('last_battle_time');
+//                $table->unsignedInteger('account_id')->index();
+//                $table->timestamp('wg_updated_at');
+//                $table->unsignedInteger('ship_id')->index();
+//
+//                $table->foreign('account_id')->references('id')->on('players');
+                
+                    $shipStatDetail->save();
+                    
+                }
                 
                 $shipStat->save();
             }
@@ -125,10 +207,10 @@ class WgAPIController extends Controller
     {
 
         //TODO: Fix Division by zero
-        $battles = $account_stats->pvp->battles > 0 ? $account_stats->pvp->battles : 1;
-        $damage_dealt = $account_stats->pvp->damage_dealt;
-        $wins = $account_stats->pvp->wins;
-        $frags = $account_stats->pvp->frags;
+        $battles = $account_stats->battles > 0 ? $account_stats->battles : 1;
+        $damage_dealt = $account_stats->damage_dealt;
+        $wins = $account_stats->wins;
+        $frags = $account_stats->frags;
         
         $average_damage_dealt = ($damage_dealt / $battles);
         $average_win_rate = (100 * $wins / $battles);

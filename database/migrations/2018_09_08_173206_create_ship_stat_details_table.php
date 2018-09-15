@@ -18,71 +18,71 @@ class CreateShipStatDetailsTable extends Migration
             
             $table->string('type', 9);
             
-            $table->unsignedInteger('max_xp');
-            $table->unsignedInteger('damage_to_buildings');
+            $table->unsignedInteger('max_xp')->nullable();
+            $table->unsignedInteger('damage_to_buildings')->nullable();
             
             /*main_battery*/
-            $table->smallInteger('main_battery_max_frags_battle');
-            $table->unsignedInteger('main_battery_frags');
-            $table->unsignedInteger('main_battery_hits');
-            $table->unsignedInteger('main_battery_shots');
+            $table->smallInteger('main_battery_max_frags_battle')->nullable();
+            $table->unsignedInteger('main_battery_frags')->nullable();
+            $table->unsignedInteger('main_battery_hits')->nullable();
+            $table->unsignedInteger('main_battery_shots')->nullable();
             
-            $table->unsignedInteger('suppressions_count');
-            $table->unsignedInteger('max_damage_scouting');
-            $table->unsignedInteger('art_agro');
-            $table->unsignedInteger('ships_spotted');
+            $table->unsignedInteger('suppressions_count')->nullable();
+            $table->unsignedInteger('max_damage_scouting')->nullable();
+            $table->unsignedInteger('art_agro')->nullable();
+            $table->unsignedInteger('ships_spotted')->nullable();
             
             /*second_battery*/
-            $table->smallInteger('second_battery_max_frags_battle');
-            $table->unsignedInteger('second_battery_frags');
-            $table->unsignedInteger('second_battery_hits');
-            $table->unsignedInteger('second_battery_shots');
+            $table->smallInteger('second_battery_max_frags_battle')->nullable();
+            $table->unsignedInteger('second_battery_frags')->nullable();
+            $table->unsignedInteger('second_battery_hits')->nullable();
+            $table->unsignedInteger('second_battery_shots')->nullable();
             
-            $table->unsignedInteger('xp');
-            $table->unsignedInteger('survived_battles');
-            $table->unsignedInteger('dropped_capture_points');
-            $table->unsignedInteger('max_damage_dealt_to_buildings');
-            $table->unsignedInteger('torpedo_agro');
-            $table->unsignedInteger('draws');
-            $table->unsignedInteger('battles_since_510');
-            $table->unsignedInteger('planes_killed');
-            $table->unsignedInteger('battles');
-            $table->smallInteger('max_ships_spotted');
-            $table->unsignedInteger('team_capture_points');
-            $table->unsignedInteger('frags');
-            $table->unsignedInteger('damage_scouting');
-            $table->unsignedInteger('max_total_agro');
-            $table->unsignedInteger('max_frags_battle');
-            $table->unsignedInteger('capture_points');
+            $table->unsignedInteger('xp')->nullable();
+            $table->unsignedInteger('survived_battles')->nullable();
+            $table->unsignedInteger('dropped_capture_points')->nullable();
+            $table->unsignedInteger('max_damage_dealt_to_buildings')->nullable();
+            $table->unsignedInteger('torpedo_agro')->nullable();
+            $table->unsignedInteger('draws')->nullable();
+            $table->unsignedInteger('battles_since_510')->nullable();
+            $table->unsignedInteger('planes_killed')->nullable();
+            $table->unsignedInteger('battles')->nullable();
+            $table->smallInteger('max_ships_spotted')->nullable();
+            $table->unsignedInteger('team_capture_points')->nullable();
+            $table->unsignedInteger('frags')->nullable();
+            $table->unsignedInteger('damage_scouting')->nullable();
+            $table->unsignedInteger('max_total_agro')->nullable();
+            $table->unsignedInteger('max_frags_battle')->nullable();
+            $table->unsignedInteger('capture_points')->nullable();
 	
             /*ramming*/
-            $table->smallInteger('ramming_max_frags_battle');
-            $table->unsignedInteger('ramming_frags');
+            $table->smallInteger('ramming_max_frags_battle')->nullable();
+            $table->unsignedInteger('ramming_frags')->nullable();
             
             /*torpedoes*/
-            $table->smallInteger('torpedoes_max_frags_battle');
-            $table->unsignedInteger('torpedoes_frags');
-            $table->unsignedInteger('torpedoes_hits');
-            $table->unsignedInteger('torpedoes_shots');
+            $table->smallInteger('torpedoes_max_frags_battle')->nullable();
+            $table->unsignedInteger('torpedoes_frags')->nullable();
+            $table->unsignedInteger('torpedoes_hits')->nullable();
+            $table->unsignedInteger('torpedoes_shots')->nullable();
 
             /*aircraft*/
-            $table->smallInteger('aircraft_max_frags_battle');
-            $table->unsignedInteger('aircraft_frags');
+            $table->smallInteger('aircraft_max_frags_battle')->nullable();
+            $table->unsignedInteger('aircraft_frags')->nullable();
             
-            $table->unsignedInteger('survived_wins');
-            $table->unsignedInteger('max_damage_dealt');
-            $table->unsignedInteger('wins');
-            $table->unsignedInteger('losses');
-            $table->unsignedInteger('damage_dealt');
-            $table->smallInteger('max_planes_killed');
-            $table->unsignedInteger('max_suppressions_count');
-            $table->unsignedInteger('team_dropped_capture_points');
-            $table->unsignedInteger('battles_since_512');
+            $table->unsignedInteger('survived_wins')->nullable();
+            $table->unsignedInteger('max_damage_dealt')->nullable();
+            $table->unsignedInteger('wins')->nullable();
+            $table->unsignedInteger('losses')->nullable();
+            $table->unsignedInteger('damage_dealt')->nullable();
+            $table->smallInteger('max_planes_killed')->nullable();
+            $table->unsignedInteger('max_suppressions_count')->nullable();
+            $table->unsignedInteger('team_dropped_capture_points')->nullable();
+            $table->unsignedInteger('battles_since_512')->nullable();
             
             /* GENERIC*/
-            $table->timestamp('last_battle_time');
+            $table->timestamp('last_battle_time')->nullable();
             $table->unsignedInteger('account_id')->index();
-            $table->timestamp('wg_updated_at');
+            $table->timestamp('wg_updated_at')->nullable();
             $table->unsignedInteger('ship_id')->index();
             
             $table->foreign('account_id')->references('id')->on('players');
