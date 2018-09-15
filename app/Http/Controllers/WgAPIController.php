@@ -145,7 +145,7 @@ class WgAPIController extends Controller
                             $shipStatDetail = ShipStatDetail::byAccountId($account_id)->byShipId($ship_stats->ship_id)->byType($type)->first();
                         }
 
-                        $this->updateShipStatDetail($shipStatDetail);
+                        $this->updateShipStatDetail($shipStatDetail, $ship_stats->$type);
 
                         $shipRating = $this->computeShipRating($ship_stats->$type, $ship_expected_stats);
 
@@ -180,75 +180,76 @@ class WgAPIController extends Controller
         $shipStat->{$type.'_ship_stat_details_id'} = $shipStatDetail->id;
     }
     
-    private function updateShipStatDetail(&$shipStatDetail) {
-        //TODO
-//                $table->string('type', 9);
-//            
-//                $table->unsignedInteger('max_xp');
-//                $table->unsignedInteger('damage_to_buildings');
-//
-//                /*main_battery*/
-//                $table->smallInteger('main_battery_max_frags_battle');
-//                $table->unsignedInteger('main_battery_frags');
-//                $table->unsignedInteger('main_battery_hits');
-//                $table->unsignedInteger('main_battery_shots');
-//
-//                $table->unsignedInteger('suppressions_count');
-//                $table->unsignedInteger('max_damage_scouting');
-//                $table->unsignedInteger('art_agro');
-//                $table->unsignedInteger('ships_spotted');
-//
-//                /*second_battery*/
-//                $table->smallInteger('second_battery_max_frags_battle');
-//                $table->unsignedInteger('second_battery_frags');
-//                $table->unsignedInteger('second_battery_hits');
-//                $table->unsignedInteger('second_battery_shots');
-//
-//                $table->unsignedInteger('xp');
-//                $table->unsignedInteger('survived_battles');
-//                $table->unsignedInteger('dropped_capture_points');
-//                $table->unsignedInteger('max_damage_dealt_to_buildings');
-//                $table->unsignedInteger('torpedo_agro');
-//                $table->unsignedInteger('draws');
-//                $table->unsignedInteger('battles_since_510');
-//                $table->unsignedInteger('planes_killed');
-//                $table->unsignedInteger('battles');
-//                $table->smallInteger('max_ships_spotted');
-//                $table->unsignedInteger('team_capture_points');
-//                $table->unsignedInteger('frags');
-//                $table->unsignedInteger('damage_scouting');
-//                $table->unsignedInteger('max_total_agro');
-//                $table->unsignedInteger('max_frags_battle');
-//                $table->unsignedInteger('capture_points');
-//
-//                /*ramming*/
-//                $table->smallInteger('ramming_max_frags_battle');
-//                $table->unsignedInteger('ramming_frags');
-//
-//                /*torpedoes*/
-//                $table->smallInteger('torpedoes_max_frags_battle');
-//                $table->unsignedInteger('torpedoes_frags');
-//                $table->unsignedInteger('torpedoes_hits');
-//                $table->unsignedInteger('torpedoes_shots');
-//
-//                /*aircraft*/
-//                $table->smallInteger('aircraft_max_frags_battle');
-//                $table->unsignedInteger('aircraft_frags');
-//
-//                $table->unsignedInteger('survived_wins');
-//                $table->unsignedInteger('max_damage_dealt');
-//                $table->unsignedInteger('wins');
-//                $table->unsignedInteger('losses');
-//                $table->unsignedInteger('damage_dealt');
-//                $table->smallInteger('max_planes_killed');
-//                $table->unsignedInteger('max_suppressions_count');
-//                $table->unsignedInteger('team_dropped_capture_points');
-//                $table->unsignedInteger('battles_since_512');
-//
+    private function updateShipStatDetail(&$shipStatDetail, $wg_ship_stats_type) {
+      
+        $shipStatDetail->max_xp                 = $wg_ship_stats_type->max_xp;
+        $shipStatDetail->damage_to_buildings    = isset($wg_ship_stats_type->damage_to_buildings) ? $wg_ship_stats_type->damage_to_buildings : null;
+        
+        /*main_battery*/
+        $shipStatDetail->main_battery_max_frags_battle  = $wg_ship_stats_type->main_battery->max_frags_battle;
+        $shipStatDetail->main_battery_frags             = $wg_ship_stats_type->main_battery->frags;
+        $shipStatDetail->main_battery_hits              = $wg_ship_stats_type->main_battery->hits;
+        $shipStatDetail->main_battery_shots             = $wg_ship_stats_type->main_battery->shots;
+
+        $shipStatDetail->suppressions_count     = isset($wg_ship_stats_type->suppressions_count) ? $wg_ship_stats_type->suppressions_count : null;        
+        $shipStatDetail->max_damage_scouting    = $wg_ship_stats_type->max_damage_scouting;
+        $shipStatDetail->art_agro               = $wg_ship_stats_type->art_agro;
+        $shipStatDetail->ships_spotted          = $wg_ship_stats_type->ships_spotted;
+
+        /*second_battery*/
+        $shipStatDetail->second_battery_max_frags_battle        = $wg_ship_stats_type->second_battery->max_frags_battle;
+        $shipStatDetail->second_battery_frags                   = $wg_ship_stats_type->second_battery->frags;
+        $shipStatDetail->second_battery_hits                    = $wg_ship_stats_type->second_battery->hits;
+        $shipStatDetail->second_battery_shots                   = $wg_ship_stats_type->second_battery->shots;
+
+        $shipStatDetail->xp                             = $wg_ship_stats_type->xp;
+        $shipStatDetail->survived_battles               = $wg_ship_stats_type->survived_battles;
+        $shipStatDetail->dropped_capture_points         = isset($wg_ship_stats_type->dropped_capture_points) ? $wg_ship_stats_type->dropped_capture_points : null;
+        $shipStatDetail->max_damage_dealt_to_buildings  = isset($wg_ship_stats_type->max_damage_dealt_to_buildings) ? $wg_ship_stats_type->max_damage_dealt_to_buildings : null;
+        $shipStatDetail->torpedo_agro                   = $wg_ship_stats_type->torpedo_agro;
+        $shipStatDetail->draws                          = $wg_ship_stats_type->draws;
+        $shipStatDetail->battles_since_510              = isset($wg_ship_stats_type->battles_since_510) ? $wg_ship_stats_type->battles_since_510 : null;
+        $shipStatDetail->planes_killed                  = $wg_ship_stats_type->planes_killed;
+        $shipStatDetail->battles                        = $wg_ship_stats_type->battles;
+        $shipStatDetail->max_ships_spotted              = $wg_ship_stats_type->max_ships_spotted;
+        $shipStatDetail->team_capture_points            = $wg_ship_stats_type->team_capture_points;
+        $shipStatDetail->frags                          = $wg_ship_stats_type->frags;
+        $shipStatDetail->damage_scouting                = $wg_ship_stats_type->damage_scouting;
+        $shipStatDetail->max_total_agro                 = $wg_ship_stats_type->max_total_agro;
+        $shipStatDetail->max_frags_battle               = $wg_ship_stats_type->max_frags_battle;
+        $shipStatDetail->capture_points                 = isset($wg_ship_stats_type->capture_points) ? $wg_ship_stats_type->capture_points : null;
+
+        /*ramming*/
+        $shipStatDetail->ramming_max_frags_battle           = $wg_ship_stats_type->ramming->max_frags_battle;
+        $shipStatDetail->ramming_frags                      = $wg_ship_stats_type->ramming->frags;
+        
+
+        /*torpedoes*/
+        $shipStatDetail->torpedoes_max_frags_battle         = $wg_ship_stats_type->torpedoes->max_frags_battle;
+        $shipStatDetail->torpedoes_frags                    = $wg_ship_stats_type->torpedoes->frags;
+        $shipStatDetail->torpedoes_hits                     = $wg_ship_stats_type->torpedoes->hits;
+        $shipStatDetail->torpedoes_shots                    = $wg_ship_stats_type->torpedoes->shots;
+
+        /*aircraft*/
+        $shipStatDetail->aircraft_max_frags_battle          = $wg_ship_stats_type->aircraft->max_frags_battle;
+        $shipStatDetail->aircraft_frags                     = $wg_ship_stats_type->aircraft->frags;
+
+        
+        $shipStatDetail->survived_wins          = $wg_ship_stats_type->survived_wins;
+        $shipStatDetail->max_damage_dealt       = $wg_ship_stats_type->max_damage_dealt;
+        $shipStatDetail->wins                   = $wg_ship_stats_type->wins;
+        $shipStatDetail->losses                 = $wg_ship_stats_type->losses;
+        $shipStatDetail->damage_dealt           = $wg_ship_stats_type->damage_dealt;
+        $shipStatDetail->max_planes_killed      = $wg_ship_stats_type->max_planes_killed;
+        $shipStatDetail->max_suppressions_count = isset($wg_ship_stats_type->max_suppressions_count) ? $wg_ship_stats_type->max_suppressions_count : null;
+        $shipStatDetail->team_dropped_capture_points = $wg_ship_stats_type->team_dropped_capture_points;
+        $shipStatDetail->battles_since_512      = isset($wg_ship_stats_type->battles_since_512) ? $wg_ship_stats_type->battles_since_512 : null;
+
+
 //                /* GENERIC*/
-//                $table->timestamp('last_battle_time');
+//                $table->timestamp('last_battle_time');            //TODO
 //                $table->unsignedInteger('account_id')->index();
-//                $table->timestamp('wg_updated_at');
+//                $table->timestamp('wg_updated_at');               //TODO
 //                $table->unsignedInteger('ship_id')->index();
 //
 //                $table->foreign('account_id')->references('id')->on('players');        
@@ -295,9 +296,6 @@ class WgAPIController extends Controller
         
         $pr = 700 * $nDmg + 300 * $nFrags + 150 * $nWins;
         
-        return array( "pr" => $pr, 
-            "wr" => $average_win_rate, 
-            "avgDamage" => $average_damage_dealt, 
-            "avgFrags" => $average_frags);
+        return array( "pr" => $pr,  "wr" => $average_win_rate,  "avgDamage" => $average_damage_dealt, "avgFrags" => $average_frags);
     }
 }
