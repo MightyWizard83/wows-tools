@@ -101,16 +101,8 @@ class WgAPIController extends Controller
                 $shipStat->wg_updated_at        =    new \DateTime(("@$wg_updated_at"));
                 $shipStat->battles             =    $ship_stats->battles;
 
-                if ($ship_stats->pvp->battles > 0) {
-                    $randomShipPR = $this->computeShipPR($ship_stats->pvp, $ship_expected_stats);
-
-                    echo "<h2>".$ship_stats->ship_id." PR: " . round($randomShipPR["pr"]) . "</h2>";
-                    echo "<strong>Win Rate: " . round($randomShipPR["wr"], 2) . "%</strong><br />\n";
-                    echo "<strong>Avg Damage: " . round($randomShipPR["avgDamage"]) . "</strong><br />\n";
-                    echo "<strong>Avg frags: " . round($randomShipPR["avgFrags"],2) . "</strong><br />\n";
-                    
-                    
-                    $type = 'pvp';
+                $type = 'pvp';
+                if ($ship_stats->$type->battles > 0) {
                 
                     $shipStatDetail = ShipStatDetail::byAccountId($account_id)->byShipId($ship_stats->ship_id)->byType($type)->firstOrCreate(['account_id' => $account_id, 'ship_id' => $ship_stats->ship_id, 'type' => $type]);
                     if ($shipStatDetail->wasRecentlyCreated === true) {
@@ -190,6 +182,21 @@ class WgAPIController extends Controller
                 
                     $shipStatDetail->save();
                     
+                    
+                    $randomShipPR = $this->computeShipPR($ship_stats->$type, $ship_expected_stats);
+
+                    echo "<h2>".$ship_stats->ship_id." PR: " . round($randomShipPR["pr"]) . "</h2>";
+                    echo "<strong>Win Rate: " . round($randomShipPR["wr"], 2) . "%</strong><br />\n";
+                    echo "<strong>Avg Damage: " . round($randomShipPR["avgDamage"]) . "</strong><br />\n";
+                    echo "<strong>Avg frags: " . round($randomShipPR["avgFrags"],2) . "</strong><br />\n";
+                    
+                    $shipStat->{$type.'_wr'}                = $randomShipPR["wr"];
+                    $shipStat->{$type.'_pr'}                = $randomShipPR["pr"];
+                    $shipStat->{$type.'_wtr'}               = null;
+                    $shipStat->{$type.'_battles'}           = $ship_stats->$type->battles;
+                    $shipStat->{$type.'_last_battle_time'}  = null;
+                    $shipStat->{$type.'_ship_stat_details_id'} = $shipStatDetail->id;                    
+                    
                 }
                 
                 $shipStat->save();
@@ -245,6 +252,9 @@ class WgAPIController extends Controller
         
         $pr = 700 * $nDmg + 300 * $nFrags + 150 * $nWins;
         
-        return array( "pr" => $pr, "wr" => $average_win_rate, "avgDamage" => $average_damage_dealt, "avgFrags" => $average_frags);
+        return array( "pr" => $pr, 
+            "wr" => $average_win_rate, 
+            "avgDamage" => $average_damage_dealt, 
+            "avgFrags" => $average_frags);
     }
 }
