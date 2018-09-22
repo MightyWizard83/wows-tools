@@ -37,7 +37,7 @@ class WgAPIServiceProvider extends ServiceProvider
         });
         
         $this->app->singleton('RatingsExpected', function ($app) {
-            $ratingsExpected = json_decode(file_get_contents("../storage/app/public/ratings-expected.json"), true);
+            $ratingsExpected = json_decode(file_get_contents(storage_path()."/app/public/ratings-expected.json"), true);
             return $ratingsExpected['data'];
         });
     }
