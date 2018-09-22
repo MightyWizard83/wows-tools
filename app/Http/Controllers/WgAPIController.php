@@ -7,6 +7,7 @@ use App\ShipStat;
 use App\ShipStatDetail;
 use \Wargaming\API;
 use Illuminate\Support\Facades\App;
+use Illuminate\Support\Facades\Log;
 
 class WgAPIController extends Controller
 {
@@ -76,6 +77,8 @@ class WgAPIController extends Controller
     public function syncPlayerTest($id)
     {
         try {
+            
+            Log::channel('WgApi')->info('syncPlayerTest START '.$id);
 
             $realm = 'eu';
             
@@ -91,11 +94,13 @@ class WgAPIController extends Controller
             
             //todo check if player found
             if (!isset($accountData->{$account_id})) {
+                Log::channel('WgApi')->info('player not found '.$id);
                 abort(404);
             }
             
             $player = Player::byRealm($realm)->byAccountId($account_id)->firstOrCreate(['realm' => $realm, 'id' => $account_id]);
             if ($player->wasRecentlyCreated === true) {
+                Log::channel('WgApi')->info('Created player '.$realm.' '.$account_id);
                 $player = Player::byRealm($realm)->byAccountId($account_id)->first();
             }
             
@@ -118,13 +123,18 @@ class WgAPIController extends Controller
                         ['account_id'=>$account_id, 
                             'extra'=> implode(",",$this->syncedApiStats)]
                         );
+            Log::channel('WgApi')->info('wows/ships/stats '.$account_id.' '.implode(",",$this->syncedApiStats));
+            Log::channel('WgApi')->debug(print_r($data,true));
             
             foreach ($data->{$account_id} as $ship_stats) {
+                
+                Log::channel('WgApi')->info('ShipStat '.$account_id.' '.$ship_stats->ship_id);
                 
                 $ship_expected_stats = $ratingsExpected[''.$ship_stats->ship_id];
                 
                 $shipStat = ShipStat::byAccountId($account_id)->byShipId($ship_stats->ship_id)->firstOrCreate(['account_id' => $account_id, 'ship_id' => $ship_stats->ship_id]);
                 if ($shipStat->wasRecentlyCreated === true) {
+                    Log::channel('WgApi')->info('Created ShipStat '.$account_id.' '.$ship_stats->ship_id);
                     $shipStat = ShipStat::byAccountId($account_id)->byShipId($ship_stats->ship_id)->first();
                 }
                 
@@ -138,6 +148,7 @@ class WgAPIController extends Controller
 
                 foreach ($this->syncedStats as $type) {
                     
+                    //Skip the type where we did not play any battles
                     if ($ship_stats->$type->battles > 0) {
 
                         $shipStatDetail = ShipStatDetail::byAccountId($account_id)->byShipId($ship_stats->ship_id)->byType($type)->firstOrCreate(['account_id' => $account_id, 'ship_id' => $ship_stats->ship_id, 'type' => $type]);
@@ -163,7 +174,8 @@ class WgAPIController extends Controller
         } catch (Exception $e) {
                 die($e->getMessage());
         }
-
+        
+        Log::channel('WgApi')->info('syncPlayerTest END '.$id);
     }
     
     private function updateShipStat($type, &$shipStat, $shipStatDetail, $shipRating, $wg_ship_stats_type) {

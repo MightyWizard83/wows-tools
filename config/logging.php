@@ -76,6 +76,13 @@ return [
             'driver' => 'errorlog',
             'level' => 'debug',
         ],
+        
+        'WgApi' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/wgapi.log'),
+            'level' => 'info',
+            'days' => 7,
+        ],
     ],
 
 ];
