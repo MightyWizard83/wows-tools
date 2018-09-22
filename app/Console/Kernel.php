@@ -27,6 +27,17 @@ class Kernel extends ConsoleKernel
 //        $schedule->call(function () {
 //            DB::table('recent_users')->delete();
 //        })->daily();
+        
+        $schedule->command('update_ratings')->withoutOverlapping(5)->daily();
+        
+        $usersToSync = array(
+            526994012, //Francesile
+            522720889, //MightyWizard83
+            500957006 //Guaro90
+            );
+        foreach ($usersToSync as $account_id) {
+            $schedule->command('WgApi:SyncPlayer '.$account_id)->withoutOverlapping(5)->everyMinute();
+        }
     }
 
     /**
