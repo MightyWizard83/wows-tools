@@ -1,15 +1,16 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Console\Commands;
 
 use App\Player;
 use App\ShipStat;
 use App\ShipStatDetail;
 use \Wargaming\API;
+use Illuminate\Console\Command;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Log;
 
-class WgAPIController extends Controller
+class SyncPlayer extends Command
 {
     
     protected $api;
@@ -17,8 +18,29 @@ class WgAPIController extends Controller
     protected $syncedStats;
     protected $syncedApiStats;
     
+    /**
+     * The name and signature of the console command.
+     *
+     * @var string
+     */
+    protected $signature = 'WgApi:SyncPlayer {account_id}';
+
+    /**
+     * The console command description.
+     *
+     * @var string
+     */
+    protected $description = 'Command description';
+
+    /**
+     * Create a new command instance.
+     *
+     * @return void
+     */
     public function __construct(API $api)
     {
+        parent::__construct();
+        
         $this->api = $api;
         $this->ratingsExpected = App::getFacadeRoot()->make('RatingsExpected');
         $this->syncedStats = array(
@@ -55,36 +77,23 @@ class WgAPIController extends Controller
 //        "rank_div3",
         "rank_solo");
     }
-    
-    /**
-     * Sync the player stats.
-     *
-     * @param  int  $id
-     * @return Response
-     */
-    public function syncPlayer($id)
-    {
-        //TODO
 
-    }
-    
     /**
-     * Sync the player stats.
+     * Execute the console command.
      *
-     * @param  int  $id
-     * @return Response
+     * @return mixed
      */
-    public function syncPlayerTest($id)
+    public function handle()
     {
         try {
             
-            Log::channel('WgApi')->info('syncPlayerTest START '.$id);
+            $account_id = $this->argument('account_id');
+            
+            Log::channel('WgApi')->info('syncPlayerTest START '.$account_id);
 
             $realm = 'eu';
             
             $ratingsExpected = app()->make('RatingsExpected');
- 
-            $account_id = $id;
 
             
             $accountData = $this->api->get('wows/account/info', 
@@ -94,7 +103,7 @@ class WgAPIController extends Controller
             
             //todo check if player found
             if (!isset($accountData->{$account_id})) {
-                Log::channel('WgApi')->info('player not found '.$id);
+                Log::channel('WgApi')->info('player not found '.$account_id);
                 abort(404);
             }
             
@@ -130,6 +139,12 @@ class WgAPIController extends Controller
                 
                 Log::channel('WgApi')->info('ShipStat '.$account_id.' '.$ship_stats->ship_id);
                 
+                
+                if (!array_key_exists(''.$ship_stats->ship_id, $ratingsExpected)) {
+                    //We do not have the stats for this ship. Skip this.
+                    Log::channel('WgApi')->error('missing ratings for Ship '.$ship_stats->ship_id);
+                    continue;
+                }
                 $ship_expected_stats = $ratingsExpected[''.$ship_stats->ship_id];
                 
                 $shipStat = ShipStat::byAccountId($account_id)->byShipId($ship_stats->ship_id)->firstOrCreate(['account_id' => $account_id, 'ship_id' => $ship_stats->ship_id]);
@@ -172,10 +187,12 @@ class WgAPIController extends Controller
             $player->save();
 
         } catch (Exception $e) {
+            Log::channel('WgApi')->error('syncPlayerTest ERROR '.$account_id.' '.$e->getMessage());
+            Log::channel('WgApi')->error(pint_r($e,true));
                 die($e->getMessage());
         }
         
-        Log::channel('WgApi')->info('syncPlayerTest END '.$id);
+        Log::channel('WgApi')->info('syncPlayerTest END '.$account_id);
     }
     
     private function updateShipStat($type, &$shipStat, $shipStatDetail, $shipRating, $wg_ship_stats_type) {
