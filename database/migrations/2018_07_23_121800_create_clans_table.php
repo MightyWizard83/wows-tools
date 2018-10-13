@@ -16,11 +16,11 @@ class CreateClansTable extends Migration
         Schema::create('clans', function (Blueprint $table) {
             $table->unsignedInteger('id')->primary();               //clan_id
             
-            $table->timestamp('wg_created_at')->nullable();         //created_at
+            $table->string('tag', 25)->nullable();                  //tag
+            $table->string('name', 250)->nullable();                 //name
             $table->unsignedInteger('members_count')->nullable();   //members_count
             
-            $table->string('name', 250)->nullable();                 //name
-            $table->string('tag', 25)->nullable();                  //tag
+            $table->timestamp('wg_created_at')->nullable();         //created_at
 
             $table->timestamps();
         });
