@@ -157,6 +157,11 @@ class SyncPlayer extends Command
                     continue;
                 }
                 $ship_expected_stats = $ratingsExpected[''.$api_ship_stats->ship_id];
+                if (empty($ship_expected_stats['average_damage_dealt']) || empty($ship_expected_stats['average_frags']) || empty($ship_expected_stats['win_rate']) ) {
+                    //Ship stats are epty
+                    Log::channel('WgApi')->error('empty ratings for Ship '.$api_ship_stats->ship_id);
+                    continue;
+                }
                 
                 $shipStat = ShipStat::byAccountId($account_id)->byShipId($api_ship_stats->ship_id)->firstOrCreate(['account_id' => $account_id, 'ship_id' => $api_ship_stats->ship_id]);
                 if ($shipStat->wasRecentlyCreated === true) {
