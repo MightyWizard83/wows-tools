@@ -121,7 +121,8 @@ class SyncPlayer extends Command
             
             if ($player->nickname <> $accountData->{$account_id}->nickname) {
                 Log::channel('WgApi')->info('Nickname Change detected '.$player->nickname.' '.$accountData->{$account_id}->nickname);
-                //TODO Hook?
+                //TODO Hook
+                
             }
             
             $player->hidden_profile     = $accountData->{$account_id}->hidden_profile;
@@ -150,7 +151,6 @@ class SyncPlayer extends Command
             foreach ($data->{$account_id} as $api_ship_stats) {
                 
                 Log::channel('WgApi')->info('ShipStat '.$account_id.' '.$api_ship_stats->ship_id);
-                
                 
                 if (!array_key_exists(''.$api_ship_stats->ship_id, $ratingsExpected)) {
                     //We do not have the stats for this ship. Skip this.
@@ -191,11 +191,10 @@ class SyncPlayer extends Command
                         
                         if ($shipStatDetail->battles <> $api_ship_stats->$type->battles && $shipStatDetail->battles > 0) {
                             Log::channel('WgApi')->info('New battles detected '.$shipStatDetail->battles.' '.$api_ship_stats->$type->battles);
+                            //TODO Hook
                             
                             $shipStatDetail->last_battle_time   =    new \DateTime(("@$last_battle_time"));
                             $shipStatDetail->wg_updated_at      =    new \DateTime(("@$wg_updated_at")); 
-                            
-                            //TODO Hook?
                         }
 
                         $this->updateShipStatDetail($shipStatDetail, $api_ship_stats->$type);
@@ -240,14 +239,15 @@ class SyncPlayer extends Command
                 if ($clan->wasRecentlyCreated === true) {
                     Log::channel('WgApi')->info('New Clan created '.$api_accountinfo_clans->clan->clan_id.' ['.$api_accountinfo_clans->clan->tag.'] '.$api_accountinfo_clans->clan->name);
                     //TODO Hook
+                    
                 }
                 
             }
             
             if ($player->clan_role <> $api_accountinfo_clans->role) {
                 Log::channel('WgApi')->info('Role change detected '.$api_accountinfo_clans->role.' '.$player->clan_role);
-                
                 //TODO Hook
+                
             }
             
             $joined_at = $api_accountinfo_clans->joined_at;           
