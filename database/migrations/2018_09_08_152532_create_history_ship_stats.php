@@ -4,7 +4,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Database\Migrations\Migration;
 
-class CreateShipStats extends Migration
+class CreateHistoryShipStats extends Migration
 {
     /**
      * Run the migrations.
@@ -13,8 +13,9 @@ class CreateShipStats extends Migration
      */
     public function up()
     {
-        Schema::create('ship_stats', function (Blueprint $table) {
+        Schema::create('history_ship_stats', function (Blueprint $table) {
             $table->increments('id');
+            
             
 //            Win Rate: 76.47%
 //            Avg Damage: 59310
@@ -23,12 +24,16 @@ class CreateShipStats extends Migration
 //            Avg. planes Destroyed
             
             /* GENERIC*/
-            $table->timestamp('last_battle_time')->nullable();
+            
             $table->unsignedInteger('account_id')->index();
-            $table->unsignedInteger('distance')->nullable();
-            $table->timestamp('wg_updated_at')->nullable();
-            $table->unsignedInteger('battles')->nullable();
             $table->unsignedInteger('ship_id')->index();
+            $table->date('date')->index();
+            
+            $table->unsignedInteger('battles')->nullable();
+            $table->timestamp('last_battle_time')->nullable();
+            $table->timestamp('wg_updated_at')->nullable();
+            $table->unsignedInteger('distance')->nullable();
+            
             
             //"club"
             
@@ -133,19 +138,17 @@ class CreateShipStats extends Migration
 //            $table->foreign('oper_div_ship_stat_details_id')->references('id')->on('ship_stat_details');
 //            $table->foreign('oper_solo_ship_stat_details_id')->references('id')->on('ship_stat_details');
             
-            $table->foreign('pve_ship_stat_details_id')->references('id')->on('ship_stat_details');
-            $table->foreign('pve_div2_ship_stat_details_id')->references('id')->on('ship_stat_details');
-            $table->foreign('pve_div3_ship_stat_details_id')->references('id')->on('ship_stat_details');
-            $table->foreign('pve_solo_ship_stat_details_id')->references('id')->on('ship_stat_details');
+            $table->foreign('pve_ship_stat_details_id')->references('id')->on('history_ship_stat_details');
+            $table->foreign('pve_div2_ship_stat_details_id')->references('id')->on('history_ship_stat_details');
+            $table->foreign('pve_div3_ship_stat_details_id')->references('id')->on('history_ship_stat_details');
+            $table->foreign('pve_solo_ship_stat_details_id')->references('id')->on('history_ship_stat_details');
             
-            $table->foreign('pvp_div2_ship_stat_details_id')->references('id')->on('ship_stat_details');
-            $table->foreign('pvp_div3_ship_stat_details_id')->references('id')->on('ship_stat_details');
-            $table->foreign('pvp_solo_ship_stat_details_id')->references('id')->on('ship_stat_details');
+            $table->foreign('pvp_div2_ship_stat_details_id')->references('id')->on('history_ship_stat_details');
+            $table->foreign('pvp_div3_ship_stat_details_id')->references('id')->on('history_ship_stat_details');
+            $table->foreign('pvp_solo_ship_stat_details_id')->references('id')->on('history_ship_stat_details');
             
-            $table->foreign('rank_solo_ship_stat_details_id')->references('id')->on('ship_stat_details');
-
+            $table->foreign('rank_solo_ship_stat_details_id')->references('id')->on('history_ship_stat_details');
             
-            $table->timestamps();
         });
     }
 
@@ -156,6 +159,6 @@ class CreateShipStats extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('ship_stats');
+        Schema::dropIfExists('history_ship_stats');
     }
 }
