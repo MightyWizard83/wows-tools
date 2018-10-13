@@ -135,47 +135,59 @@ class SyncPlayer extends Command
             Log::channel('WgApi')->info('wows/ships/stats '.$account_id.' '.implode(",",$this->syncedApiStats));
             Log::channel('WgApi')->debug(print_r($data,true));
             
-            foreach ($data->{$account_id} as $ship_stats) {
+            foreach ($data->{$account_id} as $api_ship_stats) {
                 
-                Log::channel('WgApi')->info('ShipStat '.$account_id.' '.$ship_stats->ship_id);
+                Log::channel('WgApi')->info('ShipStat '.$account_id.' '.$api_ship_stats->ship_id);
                 
                 
-                if (!array_key_exists(''.$ship_stats->ship_id, $ratingsExpected)) {
+                if (!array_key_exists(''.$api_ship_stats->ship_id, $ratingsExpected)) {
                     //We do not have the stats for this ship. Skip this.
-                    Log::channel('WgApi')->error('missing ratings for Ship '.$ship_stats->ship_id);
+                    Log::channel('WgApi')->error('missing ratings for Ship '.$api_ship_stats->ship_id);
                     continue;
                 }
-                $ship_expected_stats = $ratingsExpected[''.$ship_stats->ship_id];
+                $ship_expected_stats = $ratingsExpected[''.$api_ship_stats->ship_id];
                 
-                $shipStat = ShipStat::byAccountId($account_id)->byShipId($ship_stats->ship_id)->firstOrCreate(['account_id' => $account_id, 'ship_id' => $ship_stats->ship_id]);
+                $shipStat = ShipStat::byAccountId($account_id)->byShipId($api_ship_stats->ship_id)->firstOrCreate(['account_id' => $account_id, 'ship_id' => $api_ship_stats->ship_id]);
                 if ($shipStat->wasRecentlyCreated === true) {
-                    Log::channel('WgApi')->info('Created ShipStat '.$account_id.' '.$ship_stats->ship_id);
-                    $shipStat = ShipStat::byAccountId($account_id)->byShipId($ship_stats->ship_id)->first();
+                    Log::channel('WgApi')->info('Created ShipStat '.$account_id.' '.$api_ship_stats->ship_id);
+                    $shipStat = ShipStat::byAccountId($account_id)->byShipId($api_ship_stats->ship_id)->first();
                 }
                 
-                $last_battle_time = $ship_stats->last_battle_time;
-                $wg_updated_at = $ship_stats->updated_at;  
+                $last_battle_time = $api_ship_stats->last_battle_time;  //Last game START time
+                $wg_updated_at = $api_ship_stats->updated_at;           //Last game END time
                 
-                $shipStat->last_battle_time     =    new \DateTime(("@$last_battle_time"));
-                $shipStat->distance             =    $ship_stats->distance;
-                $shipStat->wg_updated_at        =    new \DateTime(("@$wg_updated_at"));
-                $shipStat->battles             =    $ship_stats->battles;
+                $shipStat->last_battle_time     =    new \DateTime(("@$last_battle_time")); //Last game START time
+                $shipStat->distance             =    $api_ship_stats->distance;
+                $shipStat->wg_updated_at        =    new \DateTime(("@$wg_updated_at"));    //Last game END time
+                $shipStat->battles              =    $api_ship_stats->battles;
 
+                if ($shipStat->wg_updated_at < $shipStat->last_battle_time) {
+                    Log::channel('WgApi')->info('Ongoing battles detected '.$shipStat->last_battle_time.' '.$shipStat->wg_updated_at);
+                }
+                
+                //Iterate "pve", "pve_div2", "pve_div3", "pve_solo", "pvp", "pvp_div2", "pvp_div3", "pvp_solo", "rank_solo" etc...
                 foreach ($this->syncedStats as $type) {
                     
                     //Skip the type where we did not play any battles
-                    if ($ship_stats->$type->battles > 0) {
+                    if ($api_ship_stats->$type->battles > 0) {
 
-                        $shipStatDetail = ShipStatDetail::byAccountId($account_id)->byShipId($ship_stats->ship_id)->byType($type)->firstOrCreate(['account_id' => $account_id, 'ship_id' => $ship_stats->ship_id, 'type' => $type]);
+                        $shipStatDetail = ShipStatDetail::byAccountId($account_id)->byShipId($api_ship_stats->ship_id)->byType($type)->firstOrCreate(['account_id' => $account_id, 'ship_id' => $api_ship_stats->ship_id, 'type' => $type]);
                         if ($shipStatDetail->wasRecentlyCreated === true) {
-                            $shipStatDetail = ShipStatDetail::byAccountId($account_id)->byShipId($ship_stats->ship_id)->byType($type)->first();
+                            $shipStatDetail = ShipStatDetail::byAccountId($account_id)->byShipId($api_ship_stats->ship_id)->byType($type)->first();
+                        }
+                        
+                        if ($api_ship_stats->$type->battles <> $shipStatDetail->battles) {
+                            Log::channel('WgApi')->info('New battles detected '.$shipStatDetail->battles.' '.$api_ship_stats->$type->battles);
+                            
+                            $shipStatDetail->last_battle_time   =    new \DateTime(("@$last_battle_time"));
+                            $shipStatDetail->wg_updated_at      =    new \DateTime(("@$wg_updated_at")); 
                         }
 
-                        $this->updateShipStatDetail($shipStatDetail, $ship_stats->$type);
+                        $this->updateShipStatDetail($shipStatDetail, $api_ship_stats->$type);
 
-                        $shipRating = $this->computeShipRating($ship_stats->$type, $ship_expected_stats);
+                        $shipRating = $this->computeShipRating($api_ship_stats->$type, $ship_expected_stats);
 
-                        $this->updateShipStat($type, $shipStat, $shipStatDetail, $shipRating, $ship_stats->$type);
+                        $this->updateShipStat($type, $shipStat, $shipStatDetail, $shipRating, $api_ship_stats->$type);
 
                         $shipStatDetail->save();
                     }
