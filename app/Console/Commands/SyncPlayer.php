@@ -118,6 +118,11 @@ class SyncPlayer extends Command
             $wg_stats_updated_at = $accountData->{$account_id}->stats_updated_at;
             $wg_updated_at = $accountData->{$account_id}->updated_at;        
             
+            if ($player->nickname <> $accountData->{$account_id}->nickname) {
+                Log::channel('WgApi')->info('Nickname Change detected '.$player->nickname.' '.$accountData->{$account_id}->nickname);
+                //TODO Hook?
+            }
+            
             $player->hidden_profile     = $accountData->{$account_id}->hidden_profile;
             $player->karma              = 0;
             $player->last_battle_time   = new \DateTime(("@$last_battle_time"));
@@ -128,54 +133,70 @@ class SyncPlayer extends Command
             $player->wg_stats_updated_at = new \DateTime(("@$wg_stats_updated_at"));
             $player->wg_updated_at      = new \DateTime(("@$wg_updated_at"));
             
+            $apiDateStart = round(microtime(true) * 1000);
             $data = $this->api->get('wows/ships/stats', 
                         ['account_id'=>$account_id, 
                             'extra'=> implode(",",$this->syncedApiStats)]
                         );
-            Log::channel('WgApi')->info('wows/ships/stats '.$account_id.' '.implode(",",$this->syncedApiStats));
+            $apiDateEnd = round(microtime(true) * 1000);
+                       
+            Log::channel('WgApi')->info('API-CALL wows/ships/stats '.($apiDateEnd-$apiDateStart).' ms '.
+                    $account_id.' '.
+                    implode(",",$this->syncedApiStats));
+            
             Log::channel('WgApi')->debug(print_r($data,true));
             
-            foreach ($data->{$account_id} as $ship_stats) {
+            foreach ($data->{$account_id} as $api_ship_stats) {
                 
-                Log::channel('WgApi')->info('ShipStat '.$account_id.' '.$ship_stats->ship_id);
+                Log::channel('WgApi')->info('ShipStat '.$account_id.' '.$api_ship_stats->ship_id);
                 
                 
-                if (!array_key_exists(''.$ship_stats->ship_id, $ratingsExpected)) {
+                if (!array_key_exists(''.$api_ship_stats->ship_id, $ratingsExpected)) {
                     //We do not have the stats for this ship. Skip this.
-                    Log::channel('WgApi')->error('missing ratings for Ship '.$ship_stats->ship_id);
+                    Log::channel('WgApi')->error('missing ratings for Ship '.$api_ship_stats->ship_id);
                     continue;
                 }
-                $ship_expected_stats = $ratingsExpected[''.$ship_stats->ship_id];
+                $ship_expected_stats = $ratingsExpected[''.$api_ship_stats->ship_id];
                 
-                $shipStat = ShipStat::byAccountId($account_id)->byShipId($ship_stats->ship_id)->firstOrCreate(['account_id' => $account_id, 'ship_id' => $ship_stats->ship_id]);
+                $shipStat = ShipStat::byAccountId($account_id)->byShipId($api_ship_stats->ship_id)->firstOrCreate(['account_id' => $account_id, 'ship_id' => $api_ship_stats->ship_id]);
                 if ($shipStat->wasRecentlyCreated === true) {
-                    Log::channel('WgApi')->info('Created ShipStat '.$account_id.' '.$ship_stats->ship_id);
-                    $shipStat = ShipStat::byAccountId($account_id)->byShipId($ship_stats->ship_id)->first();
+                    Log::channel('WgApi')->info('Created ShipStat '.$account_id.' '.$api_ship_stats->ship_id);
+                    $shipStat = ShipStat::byAccountId($account_id)->byShipId($api_ship_stats->ship_id)->first();
                 }
                 
-                $last_battle_time = $ship_stats->last_battle_time;
-                $wg_updated_at = $ship_stats->updated_at;  
+                $last_battle_time = $api_ship_stats->last_battle_time;  //Last game START time
+                $wg_updated_at = $api_ship_stats->updated_at;           //Last game END time
                 
-                $shipStat->last_battle_time     =    new \DateTime(("@$last_battle_time"));
-                $shipStat->distance             =    $ship_stats->distance;
-                $shipStat->wg_updated_at        =    new \DateTime(("@$wg_updated_at"));
-                $shipStat->battles             =    $ship_stats->battles;
-
+                $shipStat->last_battle_time     =    new \DateTime(("@$last_battle_time")); //Last game START time
+                $shipStat->distance             =    $api_ship_stats->distance;
+                $shipStat->wg_updated_at        =    new \DateTime(("@$wg_updated_at"));    //Last game END time
+                $shipStat->battles              =    $api_ship_stats->battles;
+                
+                //Iterate "pve", "pve_div2", "pve_div3", "pve_solo", "pvp", "pvp_div2", "pvp_div3", "pvp_solo", "rank_solo" etc...
                 foreach ($this->syncedStats as $type) {
                     
                     //Skip the type where we did not play any battles
-                    if ($ship_stats->$type->battles > 0) {
+                    if ($api_ship_stats->$type->battles > 0) {
 
-                        $shipStatDetail = ShipStatDetail::byAccountId($account_id)->byShipId($ship_stats->ship_id)->byType($type)->firstOrCreate(['account_id' => $account_id, 'ship_id' => $ship_stats->ship_id, 'type' => $type]);
+                        $shipStatDetail = ShipStatDetail::byAccountId($account_id)->byShipId($api_ship_stats->ship_id)->byType($type)->firstOrCreate(['account_id' => $account_id, 'ship_id' => $api_ship_stats->ship_id, 'type' => $type]);
                         if ($shipStatDetail->wasRecentlyCreated === true) {
-                            $shipStatDetail = ShipStatDetail::byAccountId($account_id)->byShipId($ship_stats->ship_id)->byType($type)->first();
+                            $shipStatDetail = ShipStatDetail::byAccountId($account_id)->byShipId($api_ship_stats->ship_id)->byType($type)->first();
+                        }
+                        
+                        if ($shipStatDetail->battles <> $api_ship_stats->$type->battles && $shipStatDetail->battles > 0) {
+                            Log::channel('WgApi')->info('New battles detected '.$shipStatDetail->battles.' '.$api_ship_stats->$type->battles);
+                            
+                            $shipStatDetail->last_battle_time   =    new \DateTime(("@$last_battle_time"));
+                            $shipStatDetail->wg_updated_at      =    new \DateTime(("@$wg_updated_at")); 
+                            
+                            //TODO Hook?
                         }
 
-                        $this->updateShipStatDetail($shipStatDetail, $ship_stats->$type);
+                        $this->updateShipStatDetail($shipStatDetail, $api_ship_stats->$type);
 
-                        $shipRating = $this->computeShipRating($ship_stats->$type, $ship_expected_stats);
+                        $shipRating = $this->computeShipRating($api_ship_stats->$type, $ship_expected_stats);
 
-                        $this->updateShipStat($type, $shipStat, $shipStatDetail, $shipRating, $ship_stats->$type);
+                        $this->updateShipStat($type, $shipStat, $shipStatDetail, $shipRating, $api_ship_stats->$type);
 
                         $shipStatDetail->save();
                     }
@@ -205,7 +226,7 @@ class SyncPlayer extends Command
         $shipStat->{$type.'_pr'}                = $shipRating["pr"];
         $shipStat->{$type.'_wtr'}               = null;                 //TODO
         $shipStat->{$type.'_battles'}           = $wg_ship_stats_type->battles;
-        $shipStat->{$type.'_last_battle_time'}  = null;                 //TODO
+        $shipStat->{$type.'_last_battle_time'}  = $shipStatDetail->last_battle_time;                 //TODO
         $shipStat->{$type.'_ship_stat_details_id'} = $shipStatDetail->id;
     }
     
@@ -276,9 +297,9 @@ class SyncPlayer extends Command
 
 
 //                /* GENERIC*/
-//                $table->timestamp('last_battle_time');            //TODO
+//                $table->timestamp('last_battle_time');            //Inferred in the outer logic
 //                $table->unsignedInteger('account_id')->index();
-//                $table->timestamp('wg_updated_at');               //TODO
+//                $table->timestamp('wg_updated_at');               //Inferred in the outer logic
 //                $table->unsignedInteger('ship_id')->index();
 //
 //                $table->foreign('account_id')->references('id')->on('players');        
