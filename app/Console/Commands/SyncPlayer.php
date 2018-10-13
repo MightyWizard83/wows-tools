@@ -210,6 +210,52 @@ class SyncPlayer extends Command
                 $shipStat->save();
             }
             
+            //Sync Clan Info
+            $apiDateStart = round(microtime(true) * 1000);
+            $data = $this->api->get('wows/clans/accountinfo', 
+                        ['account_id'=>$account_id, 
+                            'extra'=> 'clan']
+                        );
+            $apiDateEnd = round(microtime(true) * 1000);
+                       
+            Log::channel('WgApi')->info('API-CALL wows/clans/accountinfo '.($apiDateEnd-$apiDateStart).' ms '.
+                    $account_id);
+            
+            Log::channel('WgApi')->info(print_r($data,true));
+            
+            if ($player->clan_clan_id <> $data->{$account_id}->clan_id) {
+                Log::channel('WgApi')->info('Clan change detected '.$data->{$account_id}->clan_id.' '.$player->clan_id);
+                
+                //TODO Hook
+            }
+            
+            if ($player->clan_role <> $data->{$account_id}->role) {
+                Log::channel('WgApi')->info('Role change detected '.$data->{$account_id}->role.' '.$player->clan_role);
+                
+                //TODO Hook
+            }
+            
+            
+//(
+//    [522720889] => stdClass Object
+//        (
+//            [clan] => stdClass Object
+//                (
+//                    [members_count] => 35
+//                    [created_at] => 1484911398
+//                    [clan_id] => 500140549
+//                    [tag] => _IRN_
+//                    [name] => Italian Royal Navy
+//                )
+//
+//            [account_id] => 522720889
+//            [joined_at] => 1508951723
+//            [clan_id] => 500140549
+//            [role] => executive_officer
+//            [account_name] => MightyWizard
+//        )
+//)
+            
             $player->save();
 
         } catch (Exception $e) {
