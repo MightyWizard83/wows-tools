@@ -16,7 +16,15 @@ class CreateHistoryShipStatDetailsTable extends Migration
         Schema::create('history_ship_stat_details', function (Blueprint $table) {
             $table->increments('id');
             
-            $table->string('type', 9);
+            /* GENERIC*/
+            $table->unsignedInteger('account_id')->index();
+            $table->unsignedInteger('ship_id')->index();
+            $table->string('type', 9)->index();
+            $table->date('date')->index();
+
+            $table->timestamp('last_battle_time')->nullable();
+            $table->timestamp('wg_updated_at')->nullable();
+            
             
             $table->unsignedInteger('max_xp')->nullable();
             $table->unsignedInteger('damage_to_buildings')->nullable();
@@ -78,12 +86,6 @@ class CreateHistoryShipStatDetailsTable extends Migration
             $table->unsignedInteger('max_suppressions_count')->nullable();
             $table->unsignedInteger('team_dropped_capture_points')->nullable();
             $table->unsignedInteger('battles_since_512')->nullable();
-            
-            /* GENERIC*/
-            $table->timestamp('last_battle_time')->nullable();
-            $table->unsignedInteger('account_id')->index();
-            $table->timestamp('wg_updated_at')->nullable();
-            $table->unsignedInteger('ship_id')->index();
             
             $table->foreign('account_id')->references('id')->on('players');
             //TODO:  $table->foreign('ship_id')

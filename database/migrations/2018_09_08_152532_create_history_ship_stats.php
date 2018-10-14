@@ -148,7 +148,8 @@ class CreateHistoryShipStats extends Migration
             $table->foreign('pvp_solo_ship_stat_details_id')->references('id')->on('history_ship_stat_details');
             
             $table->foreign('rank_solo_ship_stat_details_id')->references('id')->on('history_ship_stat_details');
-            
+           
+            $table->timestamps();
         });
     }
 
