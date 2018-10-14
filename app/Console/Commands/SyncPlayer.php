@@ -106,8 +106,8 @@ class SyncPlayer extends Command
             
             //todo check if player found
             if (!isset($accountData->{$account_id})) {
-                Log::channel('WgApi')->info('player not found '.$account_id);
-                abort(404);
+                Log::channel('WgApi')->error('player not found '.$account_id);
+                return;
             }
             
             $player = Player::byRealm($realm)->byAccountId($account_id)->firstOrCreate(['realm' => $realm, 'id' => $account_id]);
@@ -150,6 +150,7 @@ class SyncPlayer extends Command
             
             Log::channel('WgApi')->debug(print_r($api_ship_data,true));
             
+            //ITERATE SHIPS
             foreach ($api_ship_data->{$account_id} as $api_ship_stats) {
                 
                 Log::channel('WgApi')->info('ShipStat '.$account_id.' '.$api_ship_stats->ship_id);
@@ -191,7 +192,6 @@ class SyncPlayer extends Command
                         }
 
                         $this->updateShipStatDetail($shipStatDetail, $api_ship_stats->$type);
-
                         $this->updateShipStat($type, $shipStat, $shipStatDetail, $shipRatings[$type], $api_ship_stats->$type);
 
                         $shipStatDetail->save();
@@ -216,6 +216,7 @@ class SyncPlayer extends Command
                     $historyShipStat->wg_updated_at        =    new \DateTime(("@$wg_updated_at"));    //Last game END time
                     $historyShipStat->distance             =    $api_ship_stats->distance;
                 }
+                //END HISTORY LOGIC
                 
                 $historyShipStat ->save();
                 $shipStat->save();
@@ -266,6 +267,8 @@ class SyncPlayer extends Command
             $player->clan_clan_id            = $api_accountinfo_clans->clan_id;
             $player->clan_joined_at          = new \DateTime(("@$joined_at"));
             $player->clan_role               = $api_accountinfo_clans->role;
+            //End  CLAN LOGIC
+            
             
             $player->save();
 
@@ -309,16 +312,11 @@ class SyncPlayer extends Command
     }
     
     private function updateShipStat($type, &$shipStat, $shipStatDetail, $shipRating, $wg_ship_stats_type) {
-//        echo "<h2>".$ship_stats->ship_id." PR: " . round($shipRating["pr"]) . "</h2>";
-//        echo "<strong>Win Rate: " . round($shipRating["wr"], 2) . "%</strong><br />\n";
-//        echo "<strong>Avg Damage: " . round($shipRating["avgDamage"]) . "</strong><br />\n";
-//        echo "<strong>Avg frags: " . round($shipRating["avgFrags"],2) . "</strong><br />\n";
-
         $shipStat->{$type.'_wr'}                = $shipRating["wr"];
         $shipStat->{$type.'_pr'}                = $shipRating["pr"];
         $shipStat->{$type.'_wtr'}               = null;                 //TODO
         $shipStat->{$type.'_battles'}           = $wg_ship_stats_type->battles;
-        $shipStat->{$type.'_last_battle_time'}  = $shipStatDetail->last_battle_time;                 //TODO
+        $shipStat->{$type.'_last_battle_time'}  = $shipStatDetail->last_battle_time; 
         $shipStat->{$type.'_ship_stat_details_id'} = $shipStatDetail->id;
     }
     
@@ -399,8 +397,7 @@ class SyncPlayer extends Command
     
     private function computeShipRating($account_stats, $ship_expected_stats)
     {
-        //TODO: Fix Division by zero
-        $battles = $account_stats->battles > 0 ? $account_stats->battles : 1;
+        $battles = $account_stats->battles;
         $damage_dealt = $account_stats->damage_dealt;
         $wins = $account_stats->wins;
         $frags = $account_stats->frags;
