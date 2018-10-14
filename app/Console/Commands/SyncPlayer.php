@@ -223,51 +223,8 @@ class SyncPlayer extends Command
             }
             
             
-            //Sync Clan Info
-            $apiDateStart = round(microtime(true) * 1000);
-            $data = $this->api->get('wows/clans/accountinfo', 
-                        ['account_id'=>$account_id, 
-                            'extra'=> 'clan']
-                        );
-            $apiDateEnd = round(microtime(true) * 1000);
-                       
-            Log::channel('WgApi')->info('API-CALL wows/clans/accountinfo '.($apiDateEnd-$apiDateStart).' ms '.$account_id);
-            Log::channel('WgApi')->debug(print_r($data,true));
-            
-            $api_accountinfo_clans = $data->{$account_id};
-            
-            if ($player->clan_clan_id <> $api_accountinfo_clans->clan_id) {
-                Log::channel('WgApi')->info('Clan change detected '.$api_accountinfo_clans->clan_id.' '.$player->clan_id);
-                //TODO Hook
-                
-                $created_at = $api_accountinfo_clans->clan->created_at; 
-                
-                $clan = Clan::byId($api_accountinfo_clans->clan->clan_id)
-                        ->firstOrCreate(['id'   => $api_accountinfo_clans->clan->clan_id,
-                            'wg_created_at'     => new \DateTime(("@$created_at")), 
-                            'members_count'     => $api_accountinfo_clans->clan->members_count,
-                            'name'              => $api_accountinfo_clans->clan->name,
-                            'tag'               => $api_accountinfo_clans->clan->tag]);
-                if ($clan->wasRecentlyCreated === true) {
-                    Log::channel('WgApi')->info('New Clan created '.$api_accountinfo_clans->clan->clan_id.' ['.$api_accountinfo_clans->clan->tag.'] '.$api_accountinfo_clans->clan->name);
-                    //TODO Hook
-                    
-                }
-                
-            }
-            
-            if ($player->clan_role <> $api_accountinfo_clans->role) {
-                Log::channel('WgApi')->info('Role change detected '.$api_accountinfo_clans->role.' '.$player->clan_role);
-                //TODO Hook
-                
-            }
-            
-            $joined_at = $api_accountinfo_clans->joined_at;           
-
-            $player->clan_clan_id            = $api_accountinfo_clans->clan_id;
-            $player->clan_joined_at          = new \DateTime(("@$joined_at"));
-            $player->clan_role               = $api_accountinfo_clans->role;
-            //End  CLAN LOGIC
+            //Update Player and Sync Clan Info
+            $this->syncClanInfo($player, $account_id);
             
             
             $player->save();
@@ -279,6 +236,54 @@ class SyncPlayer extends Command
         }
         
         Log::channel('WgApi')->info('syncPlayerTest END '.$account_id);
+    }
+    
+    private function syncClanInfo(&$player, $account_id) {
+        //Sync Clan Info
+        $apiDateStart = round(microtime(true) * 1000);
+        $data = $this->api->get('wows/clans/accountinfo', 
+                    ['account_id'=>$account_id, 
+                        'extra'=> 'clan']
+                    );
+        $apiDateEnd = round(microtime(true) * 1000);
+
+        Log::channel('WgApi')->info('API-CALL wows/clans/accountinfo '.($apiDateEnd-$apiDateStart).' ms '.$account_id);
+        Log::channel('WgApi')->debug(print_r($data,true));
+
+        $api_accountinfo_clans = $data->{$account_id};
+
+        if ($player->clan_clan_id <> $api_accountinfo_clans->clan_id) {
+            Log::channel('WgApi')->info('Clan change detected '.$api_accountinfo_clans->clan_id.' '.$player->clan_id);
+            //TODO Hook
+
+            $created_at = $api_accountinfo_clans->clan->created_at; 
+
+            $clan = Clan::byId($api_accountinfo_clans->clan->clan_id)
+                    ->firstOrCreate(['id'   => $api_accountinfo_clans->clan->clan_id,
+                        'wg_created_at'     => new \DateTime(("@$created_at")), 
+                        'members_count'     => $api_accountinfo_clans->clan->members_count,
+                        'name'              => $api_accountinfo_clans->clan->name,
+                        'tag'               => $api_accountinfo_clans->clan->tag]);
+            if ($clan->wasRecentlyCreated === true) {
+                Log::channel('WgApi')->info('New Clan created '.$api_accountinfo_clans->clan->clan_id.' ['.$api_accountinfo_clans->clan->tag.'] '.$api_accountinfo_clans->clan->name);
+                //TODO Hook
+
+            }
+
+        }
+
+        if ($player->clan_role <> $api_accountinfo_clans->role) {
+            Log::channel('WgApi')->info('Role change detected '.$api_accountinfo_clans->role.' '.$player->clan_role);
+            //TODO Hook
+
+        }
+
+        $joined_at = $api_accountinfo_clans->joined_at;           
+
+        $player->clan_clan_id            = $api_accountinfo_clans->clan_id;
+        $player->clan_joined_at          = new \DateTime(("@$joined_at"));
+        $player->clan_role               = $api_accountinfo_clans->role;
+        //End  CLAN LOGIC
     }
     
     private function computeShipRatings($api_ship_stats, $ratingsExpected) {
