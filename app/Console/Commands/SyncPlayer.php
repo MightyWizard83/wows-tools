@@ -137,34 +137,25 @@ class SyncPlayer extends Command
             $player->wg_stats_updated_at = new \DateTime(("@$wg_stats_updated_at"));
             $player->wg_updated_at      = new \DateTime(("@$wg_updated_at"));
             
-            $apiDateStart = round(microtime(true) * 1000);
-            $data = $this->api->get('wows/ships/stats', 
+            $api_ship_data_start = round(microtime(true) * 1000);
+            $api_ship_data = $this->api->get('wows/ships/stats', 
                         ['account_id'=>$account_id, 
                             'extra'=> implode(",",$this->syncedApiStats)]
                         );
-            $apiDateEnd = round(microtime(true) * 1000);
+            $api_ship_data_time = round(microtime(true) * 1000) - $api_ship_data_start;
                        
-            Log::channel('WgApi')->info('API-CALL wows/ships/stats '.($apiDateEnd-$apiDateStart).' ms '.
+            Log::channel('WgApi')->info('API-CALL wows/ships/stats '.$api_ship_data_time.' ms '.
                     $account_id.' '.
                     implode(",",$this->syncedApiStats));
             
-            Log::channel('WgApi')->debug(print_r($data,true));
+            Log::channel('WgApi')->debug(print_r($api_ship_data,true));
             
-            foreach ($data->{$account_id} as $api_ship_stats) {
+            foreach ($api_ship_data->{$account_id} as $api_ship_stats) {
                 
                 Log::channel('WgApi')->info('ShipStat '.$account_id.' '.$api_ship_stats->ship_id);
                 
-                if (!array_key_exists(''.$api_ship_stats->ship_id, $ratingsExpected)) {
-                    //We do not have the stats for this ship. Skip this.
-                    Log::channel('WgApi')->error('missing ratings for Ship '.$api_ship_stats->ship_id);
-                    continue;
-                }
-                $ship_expected_stats = $ratingsExpected[''.$api_ship_stats->ship_id];
-                if (empty($ship_expected_stats['average_damage_dealt']) || empty($ship_expected_stats['average_frags']) || empty($ship_expected_stats['win_rate']) ) {
-                    //Ship stats are epty
-                    Log::channel('WgApi')->error('empty ratings for Ship '.$api_ship_stats->ship_id);
-                    continue;
-                }
+                $shipRatings = $this->computeShipRatings($api_ship_stats, $ratingsExpected);
+                Log::channel('WgApi')->debug('Computed Ship Rating '.print_r($shipRatings,true));
                 
                 $shipStat = ShipStat::byAccountId($account_id)->byShipId($api_ship_stats->ship_id)->firstOrCreate(['account_id' => $account_id, 'ship_id' => $api_ship_stats->ship_id]);
                 if ($shipStat->wasRecentlyCreated === true) {
@@ -201,9 +192,7 @@ class SyncPlayer extends Command
 
                         $this->updateShipStatDetail($shipStatDetail, $api_ship_stats->$type);
 
-                        $shipRating = $this->computeShipRating($api_ship_stats->$type, $ship_expected_stats);
-
-                        $this->updateShipStat($type, $shipStat, $shipStatDetail, $shipRating, $api_ship_stats->$type);
+                        $this->updateShipStat($type, $shipStat, $shipStatDetail, $shipRatings[$type], $api_ship_stats->$type);
 
                         $shipStatDetail->save();
                     }
@@ -287,6 +276,36 @@ class SyncPlayer extends Command
         }
         
         Log::channel('WgApi')->info('syncPlayerTest END '.$account_id);
+    }
+    
+    private function computeShipRatings($api_ship_stats, $ratingsExpected) {
+        $shipRatings = array();
+        $ship_expected_stats = array();
+        
+        if (!array_key_exists(''.$api_ship_stats->ship_id, $ratingsExpected)) {
+            //We do not have the stats for this ship. Skip this.
+            Log::channel('WgApi')->error('missing ratings for Ship '.$api_ship_stats->ship_id);
+            
+        } else {
+            $ship_expected_stats = $ratingsExpected[''.$api_ship_stats->ship_id];
+            
+            if (empty($ship_expected_stats['average_damage_dealt']) || empty($ship_expected_stats['average_frags']) || empty($ship_expected_stats['win_rate']) ) {
+                //Ship stats are epty
+                Log::channel('WgApi')->error('empty ratings for Ship '.$api_ship_stats->ship_id);
+
+            }
+        }
+
+        //Iterate "pve", "pve_div2", "pve_div3", "pve_solo", "pvp", "pvp_div2", "pvp_div3", "pvp_solo", "rank_solo" etc...
+        foreach ($this->syncedStats as $type) {
+            //Skip the type where we did not play any battles
+            if ($api_ship_stats->$type->battles > 0) {
+                $shipRatings[$type] = $this->computeShipRating($api_ship_stats->$type, $ship_expected_stats);
+            }
+        }
+        
+        return $shipRatings;
+        
     }
     
     private function updateShipStat($type, &$shipStat, $shipStatDetail, $shipRating, $wg_ship_stats_type) {
@@ -390,34 +409,40 @@ class SyncPlayer extends Command
         $average_win_rate = (100 * $wins / $battles);
         $average_frags = ($frags / $battles);
 
-        /**
-         * Step 1 - ratios:
-         * rDmg = actualDmg/expectedDmg
-         * rWins = actualWins/expectedWins
-         * rFrags = actualFrags/expectedFrags
-         **/ 
+        $pr = null;
+        
+        if (!empty($ship_expected_stats)) {
+        
+            /**
+             * Step 1 - ratios:
+             * rDmg = actualDmg/expectedDmg
+             * rWins = actualWins/expectedWins
+             * rFrags = actualFrags/expectedFrags
+             **/ 
 
-        $rDmg = ($average_damage_dealt /  $ship_expected_stats['average_damage_dealt']);
-        $rFrags = $average_frags / ($ship_expected_stats['average_frags']);
-        $rWins = $average_win_rate / $ship_expected_stats['win_rate'];
-        
-        /** 
-         * Step 2 - normalization:
-         * nDmg = max(0, (rDmg - 0.4) / (1 - 0.4))
-         * nFrags = max(0, (rFrags - 0.1) / (1 - 0.1))
-         * nWins = max(0, (rWins - 0.7) / (1 - 0.7)) 
-         */
+            $rDmg = ($average_damage_dealt /  $ship_expected_stats['average_damage_dealt']);
+            $rFrags = $average_frags / ($ship_expected_stats['average_frags']);
+            $rWins = $average_win_rate / $ship_expected_stats['win_rate'];
 
-        $nDmg = max(0, ($rDmg - 0.4) / (1 - 0.4));
-        $nFrags = max(0, ($rFrags - 0.1) / (1 - 0.1));
-        $nWins = max(0, ($rWins - 0.7) / (1 - 0.7));
-        
-        /** 
-         * Step 3 - PR value:
-         * PR =  700*nDMG + 300*nFrags + 150*nWins
-         **/
-        
-        $pr = 700 * $nDmg + 300 * $nFrags + 150 * $nWins;
+            /** 
+             * Step 2 - normalization:
+             * nDmg = max(0, (rDmg - 0.4) / (1 - 0.4))
+             * nFrags = max(0, (rFrags - 0.1) / (1 - 0.1))
+             * nWins = max(0, (rWins - 0.7) / (1 - 0.7)) 
+             */
+
+            $nDmg = max(0, ($rDmg - 0.4) / (1 - 0.4));
+            $nFrags = max(0, ($rFrags - 0.1) / (1 - 0.1));
+            $nWins = max(0, ($rWins - 0.7) / (1 - 0.7));
+
+            /** 
+             * Step 3 - PR value:
+             * PR =  700*nDMG + 300*nFrags + 150*nWins
+             **/
+
+            $pr = 700 * $nDmg + 300 * $nFrags + 150 * $nWins;
+            
+        }
         
         return array( "pr" => $pr,  "wr" => $average_win_rate,  "avgDamage" => $average_damage_dealt, "avgFrags" => $average_frags);
     }
