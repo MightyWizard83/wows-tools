@@ -175,26 +175,10 @@ class SyncPlayer extends Command
                 $last_battle_time = $api_ship_stats->last_battle_time;  //Last game START time
                 $wg_updated_at = $api_ship_stats->updated_at;           //Last game END time
                 
-                $shipStat->last_battle_time     =    new \DateTime(("@$last_battle_time")); //Last game START time
-                $shipStat->distance             =    $api_ship_stats->distance;
-                $shipStat->wg_updated_at        =    new \DateTime(("@$wg_updated_at"));    //Last game END time
                 $shipStat->battles              =    $api_ship_stats->battles;
-                
-                $histDate = $shipStat->last_battle_time->format("Y-m-d");
-                $historyShipStat = HistoryShipStat::byAccountId($account_id)->byShipId($api_ship_stats->ship_id)->byDate($histDate)->firstOrCreate(['account_id' => $account_id, 'ship_id' => $api_ship_stats->ship_id, 'date' => $histDate]);
-                if ($historyShipStat->wasRecentlyCreated === true) {
-                    Log::channel('WgApi')->info('Created HistoryShipStat '.$account_id.' '.$api_ship_stats->ship_id.' '.$histDate);
-                    $historyShipStat = HistoryShipStat::byAccountId($account_id)->byShipId($api_ship_stats->ship_id)->byDate($histDate)->first();
-                }
-                
-                if ($shipStat->battles <> $historyShipStat->battles) {
-                    Log::channel('WgApi')->info('History ShipStats Change Detected. Battles:'.$shipStat->battles. ' '.$historyShipStat->battles);
-                    
-                    $historyShipStat->last_battle_time     =    new \DateTime(("@$last_battle_time")); //Last game START time
-                    $historyShipStat->distance             =    $api_ship_stats->distance;
-                    $historyShipStat->wg_updated_at        =    new \DateTime(("@$wg_updated_at"));    //Last game END time
-                    $historyShipStat->battles              =    $api_ship_stats->battles;
-                }
+                $shipStat->last_battle_time     =    new \DateTime(("@$last_battle_time")); //Last game START time
+                $shipStat->wg_updated_at        =    new \DateTime(("@$wg_updated_at"));    //Last game END time
+                $shipStat->distance             =    $api_ship_stats->distance;
                 
                 //Iterate "pve", "pve_div2", "pve_div3", "pve_solo", "pvp", "pvp_div2", "pvp_div3", "pvp_solo", "rank_solo" etc...
                 foreach ($this->syncedStats as $type) {
@@ -225,8 +209,27 @@ class SyncPlayer extends Command
                     }
                 }
                 
-                $shipStat->save();
+                
+                
+                //HISTORY LOGIC
+                $histDate = $shipStat->last_battle_time->format("Y-m-d");
+                $historyShipStat = HistoryShipStat::byAccountId($account_id)->byShipId($api_ship_stats->ship_id)->byDate($histDate)->firstOrCreate(['account_id' => $account_id, 'ship_id' => $api_ship_stats->ship_id, 'date' => $histDate]);
+                if ($historyShipStat->wasRecentlyCreated === true) {
+                    Log::channel('WgApi')->info('Created HistoryShipStat '.$account_id.' '.$api_ship_stats->ship_id.' '.$histDate);
+                    $historyShipStat = HistoryShipStat::byAccountId($account_id)->byShipId($api_ship_stats->ship_id)->byDate($histDate)->first();
+                }
+                
+                if ($shipStat->battles <> $historyShipStat->battles) {
+                    Log::channel('WgApi')->info('History ShipStats Change Detected. Battles:'.$shipStat->battles. ' '.$historyShipStat->battles);
+                    
+                    $historyShipStat->battles              =    $api_ship_stats->battles;
+                    $historyShipStat->last_battle_time     =    new \DateTime(("@$last_battle_time")); //Last game START time
+                    $historyShipStat->wg_updated_at        =    new \DateTime(("@$wg_updated_at"));    //Last game END time
+                    $historyShipStat->distance             =    $api_ship_stats->distance;
+                }
+                
                 $historyShipStat ->save();
+                $shipStat->save();
             }
             
             

@@ -20,7 +20,6 @@ class CreateHistoryShipStatDetailsTable extends Migration
             $table->unsignedInteger('account_id')->index();
             $table->unsignedInteger('ship_id')->index();
             $table->string('type', 9)->index();
-            $table->date('date')->index();
 
             $table->timestamp('last_battle_time')->nullable();
             $table->timestamp('wg_updated_at')->nullable();
