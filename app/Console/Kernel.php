@@ -115,7 +115,7 @@ class Kernel extends ConsoleKernel
             
             );
         foreach ($usersToSync as $account_id) {
-            $schedule->command('WgApi:SyncPlayer '.$account_id)->withoutOverlapping(5)->everyMinute();
+            $schedule->command('WgApi:SyncPlayer '.$account_id)->withoutOverlapping(50)->everyTenMinutes();
         }
     }
 
