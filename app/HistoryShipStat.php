@@ -30,4 +30,9 @@ class HistoryShipStat extends Model
     {
         return $query->whereDate('date', '=', $date);
     }
+    
+        public function scopeByValidDate($query, $validDate)
+    {
+        return $query->whereDate('date', '<=', $validDate);
+    }
 }

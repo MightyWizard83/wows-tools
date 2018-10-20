@@ -201,15 +201,29 @@ class SyncPlayer extends Command
                 
                 
                 //HISTORY LOGIC
-                $histDate = $shipStat->last_battle_time->format("Y-m-d");
-                $historyShipStat = HistoryShipStat::byAccountId($account_id)->byShipId($api_ship_stats->ship_id)->byDate($histDate)->firstOrCreate(['account_id' => $account_id, 'ship_id' => $api_ship_stats->ship_id, 'date' => $histDate]);
+                //$histDate = $shipStat->last_battle_time->format("Y-m-d");
+                $todayDate = (new \DateTime())->format("Y-m-d");
+                $historyShipStat = HistoryShipStat::byAccountId($account_id)->byShipId($api_ship_stats->ship_id)->byValidDate($todayDate)->firstOrCreate(['account_id' => $account_id, 'ship_id' => $api_ship_stats->ship_id, 'date' => $todayDate]);
                 if ($historyShipStat->wasRecentlyCreated === true) {
-                    Log::channel('WgApi')->info('Created HistoryShipStat '.$account_id.' '.$api_ship_stats->ship_id.' '.$histDate);
-                    $historyShipStat = HistoryShipStat::byAccountId($account_id)->byShipId($api_ship_stats->ship_id)->byDate($histDate)->first();
+                    Log::channel('WgApi')->info('Created HistoryShipStat '.$account_id.' '.$api_ship_stats->ship_id.' '.$todayDate);
+                    $historyShipStat = HistoryShipStat::byAccountId($account_id)->byShipId($api_ship_stats->ship_id)->byValidDate($todayDate)->first();
                 }
                 
-                if ($shipStat->battles <> $historyShipStat->battles) {
+                if ( $this->shipStatsChangeDetected($shipStat, $historyShipStat, $this->syncedStats) ) {
                     Log::channel('WgApi')->info('History ShipStats Change Detected. Battles:'.$shipStat->battles. ' '.$historyShipStat->battles);
+                    
+                    if ($historyShipStat->date <> $todayDate) {
+                        Log::channel('WgApi')->info('Creating new History ShipStats:'.$historyShipStat->date. ' '.$todayDate);
+                        
+                        $historyShipStat = HistoryShipStat::byAccountId($account_id)->byShipId($api_ship_stats->ship_id)->byDate($todayDate)->firstOrCreate(['account_id' => $account_id, 'ship_id' => $api_ship_stats->ship_id, 'date' => $todayDate]);
+                        if ($historyShipStat->wasRecentlyCreated === true) {
+                            Log::channel('WgApi')->info('Created HistoryShipStat '.$account_id.' '.$api_ship_stats->ship_id.' '.$todayDate);
+                            $historyShipStat = HistoryShipStat::byAccountId($account_id)->byShipId($api_ship_stats->ship_id)->byDate($todayDate)->first();
+                        }
+                        
+                    } else {
+                        Log::channel('WgApi')->info('Updating existing History ShipStats:'.$historyShipStat->date. ' '.$todayDate);
+                    }
                     
                     $historyShipStat->battles              =    $api_ship_stats->battles;
                     $historyShipStat->last_battle_time     =    new \DateTime(("@$last_battle_time")); //Last game START time
@@ -447,5 +461,43 @@ class SyncPlayer extends Command
         }
         
         return array( "pr" => $pr,  "wr" => $average_win_rate,  "avgDamage" => $average_damage_dealt, "avgFrags" => $average_frags);
+    }
+    
+    private function shipStatsChangeDetected($shipStat, $historyShipStat, $syncedStats)
+    {
+        if ($shipStat->battles <> $historyShipStat->battles) {
+            Log::channel('WgApi')->info('Battle Number Change Detected. ' . $shipStat->battles. ' ' . $historyShipStat->battles);
+            return true;
+        }
+                
+        foreach ($syncedStats as $type) {
+            
+            if ($shipStat->{$type.'_wr'} <>  $historyShipStat->{$type.'_wr'} ) {
+                Log::channel('WgApi')->info($type.'WR Change Detected. ' . $shipStat->{$type.'_wr'}. ' ' . $historyShipStat->{$type.'_wr'});
+                return true;
+            }
+            
+            if ($shipStat->{$type.'_pr'} <>  $historyShipStat->{$type.'_pr'} ) {
+                Log::channel('WgApi')->info($type.'PR Change Detected. ' . $shipStat->{$type.'_pr'}. ' ' . $historyShipStat->{$type.'_pr'});
+                return true;
+            }
+            
+            if ($shipStat->{$type.'_wtr'} <>  $historyShipStat->{$type.'_wtr'} ) {
+                Log::channel('WgApi')->info($type.'WTR Change Detected. ' . $shipStat->{$type.'_wtr'}. ' ' . $historyShipStat->{$type.'_wtr'});
+                return true;
+            }
+            
+            if ($shipStat->{$type.'_battles'} <>  $historyShipStat->{$type.'_battles'} ) {
+                Log::channel('WgApi')->info($type.'BATTLES Change Detected. ' . $shipStat->{$type.'_battles'}. ' ' . $historyShipStat->{$type.'_battles'});
+                return true;
+            }
+            
+            if ($shipStat->{$type.'_last_battle_time'} <>  $historyShipStat->{$type.'_last_battle_time'} ) {
+                Log::channel('WgApi')->info($type.'LBT Change Detected. ' . $shipStat->{$type.'_last_battle_time'}. ' ' . $historyShipStat->{$type.'_last_battle_time'});
+                return true;
+            }
+        }
+        
+        return false;
     }
 }
