@@ -98,6 +98,7 @@ class SyncPlayer extends Command
             
             $ratingsExpected = app()->make('RatingsExpected');
 
+            $todayDate = (new \DateTime())->format("Y-m-d");
             
             $accountData = $this->api->get('wows/account/info', 
                         ['account_id'=>$account_id, 
@@ -201,8 +202,7 @@ class SyncPlayer extends Command
                 
                 
                 //HISTORY LOGIC
-                //$histDate = $shipStat->last_battle_time->format("Y-m-d");
-                $todayDate = (new \DateTime())->format("Y-m-d");
+                //We filter by Valid Date (date <= today)
                 $historyShipStat = HistoryShipStat::byAccountId($account_id)->byShipId($api_ship_stats->ship_id)->byValidDate($todayDate)->firstOrCreate(['account_id' => $account_id, 'ship_id' => $api_ship_stats->ship_id, 'date' => $todayDate]);
                 if ($historyShipStat->wasRecentlyCreated === true) {
                     Log::channel('WgApi')->info('Created HistoryShipStat '.$account_id.' '.$api_ship_stats->ship_id.' '.$todayDate);
@@ -215,12 +215,8 @@ class SyncPlayer extends Command
                     if ($historyShipStat->date <> $todayDate) {
                         Log::channel('WgApi')->info('Creating new History ShipStats:'.$historyShipStat->date. ' '.$todayDate);
                         
-                        $historyShipStat = HistoryShipStat::byAccountId($account_id)->byShipId($api_ship_stats->ship_id)->byDate($todayDate)->firstOrCreate(['account_id' => $account_id, 'ship_id' => $api_ship_stats->ship_id, 'date' => $todayDate]);
-                        if ($historyShipStat->wasRecentlyCreated === true) {
-                            Log::channel('WgApi')->info('Created HistoryShipStat '.$account_id.' '.$api_ship_stats->ship_id.' '.$todayDate);
-                            $historyShipStat = HistoryShipStat::byAccountId($account_id)->byShipId($api_ship_stats->ship_id)->byDate($todayDate)->first();
-                        }
-                        
+                        //TODO: Improve this logic!
+                        $historyShipStat = HistoryShipStat::Create(['account_id' => $account_id, 'ship_id' => $api_ship_stats->ship_id, 'date' => $todayDate]);
                     } else {
                         Log::channel('WgApi')->info('Updating existing History ShipStats:'.$historyShipStat->date. ' '.$todayDate);
                     }
@@ -229,6 +225,53 @@ class SyncPlayer extends Command
                     $historyShipStat->last_battle_time     =    new \DateTime(("@$last_battle_time")); //Last game START time
                     $historyShipStat->wg_updated_at        =    new \DateTime(("@$wg_updated_at"));    //Last game END time
                     $historyShipStat->distance             =    $api_ship_stats->distance;
+                    
+                    
+                    //Iterate "pve", "pve_div2", "pve_div3", "pve_solo", "pvp", "pvp_div2", "pvp_div3", "pvp_solo", "rank_solo" etc...
+                    foreach ($this->syncedStats as $type) {
+
+                        //Skip the type where we did not play any battles
+                        if ($api_ship_stats->$type->battles > 0) {
+
+                            if (isset($historyShipStat->{$type.'_ship_stat_details_id'})) {
+                                Log::channel('WgApi')->debug('Fetching HistoryShipStatDetail Id:'.$historyShipStat->{$type.'_ship_stat_details_id'});
+                                $historyShipStatDetail = HistoryShipStatDetail::byId($historyShipStat->{$type.'_ship_stat_details_id'})->firstOrCreate(['account_id' => $account_id, 'ship_id' => $api_ship_stats->ship_id, 'type' => $type]);
+                            } else {
+                                Log::channel('WgApi')->debug('Fetching HistoryShipStatDetail account Id: '.$account_id.' Ship Id:'.$api_ship_stats->ship_id.' Type: '.$type);
+                                $historyShipStatDetail = HistoryShipStatDetail::byAccountId($account_id)->byShipId($api_ship_stats->ship_id)->byType($type)->orderBy('battles', 'desc')->firstOrCreate(['account_id' => $account_id, 'ship_id' => $api_ship_stats->ship_id, 'type' => $type]);
+                            }
+                            if ($historyShipStatDetail->wasRecentlyCreated === true) {
+                                Log::channel('WgApi')->debug('reloading HistoryShipStatDetail Id:'.$historyShipStatDetail->id);
+                                $historyShipStatDetail = HistoryShipStatDetail::byId($historyShipStatDetail->id)->first();
+                            }
+                            
+                            if ($historyShipStatDetail->battles <> $api_ship_stats->$type->battles) {
+                                Log::channel('WgApi')->debug('New history battles detected '.$historyShipStatDetail->battles.' '.$api_ship_stats->$type->battles);
+                                //TODO Hook
+                                
+                                $historyShipStatDetailDate = $historyShipStatDetail->created_at->format("Y-m-d"); 
+                                if ($todayDate <> $historyShipStatDetailDate) {
+                                    Log::channel('WgApi')->info('Creating New HistoryShipStatDetail '.$todayDate.' '.$historyShipStatDetailDate.' '.$type);
+                                    
+                                    //TODO: Improve this logic!
+                                    $historyShipStatDetail = HistoryShipStatDetail::Create(['account_id' => $account_id, 'ship_id' => $api_ship_stats->ship_id, 'type' => $type]);
+                                    
+                                    $historyShipStatDetail->last_battle_time   =    new \DateTime(("@$last_battle_time"));
+                                    $historyShipStatDetail->wg_updated_at      =    new \DateTime(("@$wg_updated_at")); 
+                                    
+                                } else if ($historyShipStatDetail->battles > 0) {
+                                    $historyShipStatDetail->last_battle_time   =    new \DateTime(("@$last_battle_time"));
+                                    $historyShipStatDetail->wg_updated_at      =    new \DateTime(("@$wg_updated_at")); 
+                                }
+                                
+                                $this->updateShipStatDetail($historyShipStatDetail, $api_ship_stats->$type);
+                            }
+
+                            $this->updateShipStat($type, $historyShipStat, $historyShipStatDetail, $shipRatings[$type], $api_ship_stats->$type);
+
+                            $historyShipStatDetail->save();
+                        }
+                    }
                 }
                 //END HISTORY LOGIC
                 

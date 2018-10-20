@@ -15,6 +15,11 @@ class HistoryShipStatDetail extends Model
      */
     protected $table = 'history_ship_stat_details';
     
+    public function scopeById($query, $Id)
+    {
+        return $query->where('id', $Id);
+    }
+    
     public function scopeByAccountId($query, $accountId)
     {
         return $query->where('account_id', $accountId);
@@ -30,8 +35,4 @@ class HistoryShipStatDetail extends Model
         return $query->where('type', $type);
     }
     
-    public function scopeByDate($query, $date)
-    {
-        return $query->whereDate('date', '=', $date);
-    }
 }
