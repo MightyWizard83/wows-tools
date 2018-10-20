@@ -365,7 +365,7 @@ class SyncPlayer extends Command
         foreach ($this->syncedStats as $type) {
             //Skip the type where we did not play any battles
             if ($api_ship_stats->$type->battles > 0) {
-                $shipRatings[$type] = $this->computeShipRating($api_ship_stats->$type, $ship_expected_stats);
+                $shipRatings[$type] = $this->computeShipRating($api_ship_stats->$type, $ship_expected_stats);        
             }
         }
         
@@ -502,6 +502,10 @@ class SyncPlayer extends Command
             $pr = 700 * $nDmg + 300 * $nFrags + 150 * $nWins;
             
         }
+        
+        //NORMALIZE
+        $pr = round($pr, 0);
+        $average_win_rate = round($average_win_rate, 2);
         
         return array( "pr" => $pr,  "wr" => $average_win_rate,  "avgDamage" => $average_damage_dealt, "avgFrags" => $average_frags);
     }

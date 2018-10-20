@@ -1,41 +1,52 @@
 ##Ubuntu 16.04
 https://tecadmin.net/install-laravel-framework-on-ubuntu/
-http://www.laravelinterviewquestions.com/2017/04/upgrading-php-version-on-ubantu-1604.html#sthash.v8XIHlt0.sLDPzSpt.dpbs
-https://askubuntu.com/questions/493460/how-to-install-add-apt-repository-using-the-terminal
-https://www.digitalocean.com/community/tutorials/how-to-install-and-secure-phpmyadmin-on-ubuntu-16-04
-
 
 sudo apt-get update
-
 sudo apt-get upgrade
 
-Step 0 – HOTFIX special characters
+##Step 1 – Install LAMP
 
-sudo apt-get install software-properties-common
-sudo apt-get install python3-software-properties
 sudo apt-get install python-software-properties
-
+sudo apt-get install software-properties-common
 sudo apt-get install -y language-pack-en-base
 sudo LC_ALL=en_US.UTF-8 add-apt-repository ppa:ondrej/php
 
-Step 1 – Install LAMP
-
 sudo apt-get update
+sudo apt-get install -y php7.2 php7.2-gd php7.2-mbstring php7.2-xml
 
-sudo apt-get install -y php7.2 php7.2-mcrypt php7.2-gd php7.2-mbstring php7.2-xml
 sudo apt-get install apache2 libapache2-mod-php7.2
+
 sudo apt-get install mysql-server php7.2-mysql
+
+##Install mcrypt
+sudo apt-get -y install gcc make autoconf libc-dev pkg-config
+sudo apt-get -y install php7.2-dev
+sudo apt-get -y install libmcrypt-dev
+
+sudo pecl install mcrypt-1.0.1
 
 ##Install Composer
 
+sudo apt-get install curl
 curl -sS https://getcomposer.org/installer | php
 sudo mv composer.phar /usr/local/bin/composer
 sudo chmod +x /usr/local/bin/composer
 
-#Install Laravel
-(checkout from git)
 
-cd /var/www/laravel
+##Install GIT
+apt-get update
+apt-get install git-core
+
+##Install Laravel
+cd /var/www/
+git clone https://github.com/MightyWizard83/wows-tools
+
+#WORKAROUND TEMPORARY BUG
+sudo apt-get install nano
+nano /var/www/wows-tools/storage/app/public/ratings-expected.json
+{"data":{}}
+
+cd /var/www/wows-tools
 sudo composer install
 
 chown -R www-data.www-data /var/www/wows-tools
@@ -51,6 +62,7 @@ php artisan key:generate
 
 https://www.digitalocean.com/community/tutorials/how-to-install-and-secure-phpmyadmin-on-ubuntu-16-04
 
+
 ##Step 6 – Apache Configuration
 
 Enabling mod_rewrite
@@ -65,13 +77,13 @@ nano /etc/apache2/sites-enabled/000-default.conf
 	<VirtualHost *:80>
 
 			ServerAdmin webmaster@localhost
-			DocumentRoot /var/www/laravel/public
+			DocumentRoot /var/www/wows-tools/public
 
 			<Directory />
 					Options FollowSymLinks
 					AllowOverride None
 			</Directory>
-			<Directory /var/www/laravel>
+			<Directory /var/www/wows-tools>
 					AllowOverride All
 			</Directory>
 
