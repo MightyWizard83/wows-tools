@@ -4,7 +4,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Database\Migrations\Migration;
 
-class CreateShipStats extends Migration
+class CreateShipStatsTable extends Migration
 {
     /**
      * Run the migrations.
@@ -23,12 +23,15 @@ class CreateShipStats extends Migration
 //            Avg. planes Destroyed
             
             /* GENERIC*/
-            $table->timestamp('last_battle_time')->nullable();
+            
             $table->unsignedInteger('account_id')->index();
-            $table->unsignedInteger('distance')->nullable();
-            $table->timestamp('wg_updated_at')->nullable();
-            $table->unsignedInteger('battles')->nullable();
             $table->unsignedInteger('ship_id')->index();
+            
+            $table->unsignedInteger('battles')->nullable();
+            $table->timestamp('last_battle_time')->nullable();
+            $table->timestamp('wg_updated_at')->nullable();
+            $table->unsignedInteger('distance')->nullable();
+            
             
             //"club"
             

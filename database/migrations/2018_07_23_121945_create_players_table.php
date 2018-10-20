@@ -29,8 +29,14 @@ class CreatePlayersTable extends Migration
 
             $table->string('nickname', 25)->nullable();
 
+            $table->unsignedInteger('clan_clan_id')->nullable()->index();
+            $table->timestamp('clan_joined_at')->nullable();
+            $table->string('clan_role',25)->nullable();
+            
             $table->timestamp('wg_stats_updated_at')->nullable();
             $table->timestamp('wg_updated_at')->nullable();            
+            
+            $table->foreign('clan_clan_id')->references('id')->on('clans');
             
             $table->timestamps();
         });

@@ -15,6 +15,10 @@ class AppServiceProvider extends ServiceProvider
     public function boot()
     {
         Schema::defaultStringLength(191); //FIX https://laravel-news.com/laravel-5-4-key-too-long-error
+        
+//        \DB::listen(function ($query) {
+//            \Log::info($query->sql, $query->bindings, $query->time);
+//        });
     }
 
     /**

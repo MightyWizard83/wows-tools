@@ -2,9 +2,12 @@
 
 namespace App\Console\Commands;
 
+use App\Clan;
 use App\Player;
 use App\ShipStat;
 use App\ShipStatDetail;
+use App\HistoryShipStat;
+use App\HistoryShipStatDetail;
 use \Wargaming\API;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\App;
@@ -85,9 +88,9 @@ class SyncPlayer extends Command
      */
     public function handle()
     {
+        $account_id = $this->argument('account_id');
+        
         try {
-            
-            $account_id = $this->argument('account_id');
             
             Log::channel('WgApi')->info('syncPlayerTest START '.$account_id);
 
@@ -95,6 +98,7 @@ class SyncPlayer extends Command
             
             $ratingsExpected = app()->make('RatingsExpected');
 
+            $todayDate = (new \DateTime())->format("Y-m-d");
             
             $accountData = $this->api->get('wows/account/info', 
                         ['account_id'=>$account_id, 
@@ -103,8 +107,8 @@ class SyncPlayer extends Command
             
             //todo check if player found
             if (!isset($accountData->{$account_id})) {
-                Log::channel('WgApi')->info('player not found '.$account_id);
-                abort(404);
+                Log::channel('WgApi')->error('player not found '.$account_id);
+                return;
             }
             
             $player = Player::byRealm($realm)->byAccountId($account_id)->firstOrCreate(['realm' => $realm, 'id' => $account_id]);
@@ -120,7 +124,8 @@ class SyncPlayer extends Command
             
             if ($player->nickname <> $accountData->{$account_id}->nickname) {
                 Log::channel('WgApi')->info('Nickname Change detected '.$player->nickname.' '.$accountData->{$account_id}->nickname);
-                //TODO Hook?
+                //TODO Hook
+                
             }
             
             $player->hidden_profile     = $accountData->{$account_id}->hidden_profile;
@@ -133,30 +138,26 @@ class SyncPlayer extends Command
             $player->wg_stats_updated_at = new \DateTime(("@$wg_stats_updated_at"));
             $player->wg_updated_at      = new \DateTime(("@$wg_updated_at"));
             
-            $apiDateStart = round(microtime(true) * 1000);
-            $data = $this->api->get('wows/ships/stats', 
+            $api_ship_data_start = round(microtime(true) * 1000);
+            $api_ship_data = $this->api->get('wows/ships/stats', 
                         ['account_id'=>$account_id, 
                             'extra'=> implode(",",$this->syncedApiStats)]
                         );
-            $apiDateEnd = round(microtime(true) * 1000);
+            $api_ship_data_time = round(microtime(true) * 1000) - $api_ship_data_start;
                        
-            Log::channel('WgApi')->info('API-CALL wows/ships/stats '.($apiDateEnd-$apiDateStart).' ms '.
+            Log::channel('WgApi')->info('API-CALL wows/ships/stats '.$api_ship_data_time.' ms '.
                     $account_id.' '.
                     implode(",",$this->syncedApiStats));
             
-            Log::channel('WgApi')->debug(print_r($data,true));
+            Log::channel('WgApi')->debug(print_r($api_ship_data,true));
             
-            foreach ($data->{$account_id} as $api_ship_stats) {
+            //ITERATE SHIPS
+            foreach ($api_ship_data->{$account_id} as $api_ship_stats) {
                 
                 Log::channel('WgApi')->info('ShipStat '.$account_id.' '.$api_ship_stats->ship_id);
                 
-                
-                if (!array_key_exists(''.$api_ship_stats->ship_id, $ratingsExpected)) {
-                    //We do not have the stats for this ship. Skip this.
-                    Log::channel('WgApi')->error('missing ratings for Ship '.$api_ship_stats->ship_id);
-                    continue;
-                }
-                $ship_expected_stats = $ratingsExpected[''.$api_ship_stats->ship_id];
+                $shipRatings = $this->computeShipRatings($api_ship_stats, $ratingsExpected);
+                Log::channel('WgApi')->debug('Computed Ship Rating '.print_r($shipRatings,true));
                 
                 $shipStat = ShipStat::byAccountId($account_id)->byShipId($api_ship_stats->ship_id)->firstOrCreate(['account_id' => $account_id, 'ship_id' => $api_ship_stats->ship_id]);
                 if ($shipStat->wasRecentlyCreated === true) {
@@ -167,10 +168,10 @@ class SyncPlayer extends Command
                 $last_battle_time = $api_ship_stats->last_battle_time;  //Last game START time
                 $wg_updated_at = $api_ship_stats->updated_at;           //Last game END time
                 
-                $shipStat->last_battle_time     =    new \DateTime(("@$last_battle_time")); //Last game START time
-                $shipStat->distance             =    $api_ship_stats->distance;
-                $shipStat->wg_updated_at        =    new \DateTime(("@$wg_updated_at"));    //Last game END time
                 $shipStat->battles              =    $api_ship_stats->battles;
+                $shipStat->last_battle_time     =    new \DateTime(("@$last_battle_time")); //Last game START time
+                $shipStat->wg_updated_at        =    new \DateTime(("@$wg_updated_at"));    //Last game END time
+                $shipStat->distance             =    $api_ship_stats->distance;
                 
                 //Iterate "pve", "pve_div2", "pve_div3", "pve_solo", "pvp", "pvp_div2", "pvp_div3", "pvp_solo", "rank_solo" etc...
                 foreach ($this->syncedStats as $type) {
@@ -185,48 +186,199 @@ class SyncPlayer extends Command
                         
                         if ($shipStatDetail->battles <> $api_ship_stats->$type->battles && $shipStatDetail->battles > 0) {
                             Log::channel('WgApi')->info('New battles detected '.$shipStatDetail->battles.' '.$api_ship_stats->$type->battles);
+                            //TODO Hook
                             
                             $shipStatDetail->last_battle_time   =    new \DateTime(("@$last_battle_time"));
                             $shipStatDetail->wg_updated_at      =    new \DateTime(("@$wg_updated_at")); 
-                            
-                            //TODO Hook?
                         }
 
                         $this->updateShipStatDetail($shipStatDetail, $api_ship_stats->$type);
-
-                        $shipRating = $this->computeShipRating($api_ship_stats->$type, $ship_expected_stats);
-
-                        $this->updateShipStat($type, $shipStat, $shipStatDetail, $shipRating, $api_ship_stats->$type);
+                        $this->updateShipStat($type, $shipStat, $shipStatDetail, $shipRatings[$type], $api_ship_stats->$type);
 
                         $shipStatDetail->save();
                     }
                 }
                 
+                
+                
+                //HISTORY LOGIC
+                //We filter by Valid Date (date <= today)
+                $historyShipStat = HistoryShipStat::byAccountId($account_id)->byShipId($api_ship_stats->ship_id)->byValidDate($todayDate)->firstOrCreate(['account_id' => $account_id, 'ship_id' => $api_ship_stats->ship_id, 'date' => $todayDate]);
+                if ($historyShipStat->wasRecentlyCreated === true) {
+                    Log::channel('WgApi')->info('Created HistoryShipStat '.$account_id.' '.$api_ship_stats->ship_id.' '.$todayDate);
+                    $historyShipStat = HistoryShipStat::byAccountId($account_id)->byShipId($api_ship_stats->ship_id)->byValidDate($todayDate)->first();
+                }
+                
+                if ( $this->shipStatsChangeDetected($shipStat, $historyShipStat, $this->syncedStats) ) {
+                    Log::channel('WgApi')->info('History ShipStats Change Detected. Battles:'.$shipStat->battles. ' '.$historyShipStat->battles);
+                    
+                    if ($historyShipStat->date <> $todayDate) {
+                        Log::channel('WgApi')->info('Creating new History ShipStats:'.$historyShipStat->date. ' '.$todayDate);
+                        
+                        //TODO: Improve this logic!
+                        $historyShipStat = HistoryShipStat::Create(['account_id' => $account_id, 'ship_id' => $api_ship_stats->ship_id, 'date' => $todayDate]);
+                    } else {
+                        Log::channel('WgApi')->info('Updating existing History ShipStats:'.$historyShipStat->date. ' '.$todayDate);
+                    }
+                    
+                    $historyShipStat->battles              =    $api_ship_stats->battles;
+                    $historyShipStat->last_battle_time     =    new \DateTime(("@$last_battle_time")); //Last game START time
+                    $historyShipStat->wg_updated_at        =    new \DateTime(("@$wg_updated_at"));    //Last game END time
+                    $historyShipStat->distance             =    $api_ship_stats->distance;
+                    
+                    
+                    //Iterate "pve", "pve_div2", "pve_div3", "pve_solo", "pvp", "pvp_div2", "pvp_div3", "pvp_solo", "rank_solo" etc...
+                    foreach ($this->syncedStats as $type) {
+
+                        //Skip the type where we did not play any battles
+                        if ($api_ship_stats->$type->battles > 0) {
+
+                            if (isset($historyShipStat->{$type.'_ship_stat_details_id'})) {
+                                Log::channel('WgApi')->debug('Fetching HistoryShipStatDetail Id:'.$historyShipStat->{$type.'_ship_stat_details_id'});
+                                $historyShipStatDetail = HistoryShipStatDetail::byId($historyShipStat->{$type.'_ship_stat_details_id'})->firstOrCreate(['account_id' => $account_id, 'ship_id' => $api_ship_stats->ship_id, 'type' => $type]);
+                            } else {
+                                Log::channel('WgApi')->debug('Fetching HistoryShipStatDetail account Id: '.$account_id.' Ship Id:'.$api_ship_stats->ship_id.' Type: '.$type);
+                                $historyShipStatDetail = HistoryShipStatDetail::byAccountId($account_id)->byShipId($api_ship_stats->ship_id)->byType($type)->orderBy('battles', 'desc')->firstOrCreate(['account_id' => $account_id, 'ship_id' => $api_ship_stats->ship_id, 'type' => $type]);
+                            }
+                            if ($historyShipStatDetail->wasRecentlyCreated === true) {
+                                Log::channel('WgApi')->debug('reloading HistoryShipStatDetail Id:'.$historyShipStatDetail->id);
+                                $historyShipStatDetail = HistoryShipStatDetail::byId($historyShipStatDetail->id)->first();
+                            }
+                            
+                            if ($historyShipStatDetail->battles <> $api_ship_stats->$type->battles) {
+                                Log::channel('WgApi')->debug('New history battles detected '.$historyShipStatDetail->battles.' '.$api_ship_stats->$type->battles);
+                                //TODO Hook
+                                
+                                $historyShipStatDetailDate = $historyShipStatDetail->created_at->format("Y-m-d"); 
+                                if ($todayDate <> $historyShipStatDetailDate) {
+                                    Log::channel('WgApi')->info('Creating New HistoryShipStatDetail '.$todayDate.' '.$historyShipStatDetailDate.' '.$type);
+                                    
+                                    //TODO: Improve this logic!
+                                    $historyShipStatDetail = HistoryShipStatDetail::Create(['account_id' => $account_id, 'ship_id' => $api_ship_stats->ship_id, 'type' => $type]);
+                                    
+                                    $historyShipStatDetail->last_battle_time   =    new \DateTime(("@$last_battle_time"));
+                                    $historyShipStatDetail->wg_updated_at      =    new \DateTime(("@$wg_updated_at")); 
+                                    
+                                } else if ($historyShipStatDetail->battles > 0) {
+                                    $historyShipStatDetail->last_battle_time   =    new \DateTime(("@$last_battle_time"));
+                                    $historyShipStatDetail->wg_updated_at      =    new \DateTime(("@$wg_updated_at")); 
+                                }
+                                
+                                $this->updateShipStatDetail($historyShipStatDetail, $api_ship_stats->$type);
+                            }
+
+                            $this->updateShipStat($type, $historyShipStat, $historyShipStatDetail, $shipRatings[$type], $api_ship_stats->$type);
+
+                            $historyShipStatDetail->save();
+                        }
+                    }
+                }
+                //END HISTORY LOGIC
+                
+                $historyShipStat ->save();
                 $shipStat->save();
             }
             
+            
+            //Update Player and Sync Clan Info
+            $this->syncClanInfo($player, $account_id);
+            
+            
             $player->save();
 
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             Log::channel('WgApi')->error('syncPlayerTest ERROR '.$account_id.' '.$e->getMessage());
-            Log::channel('WgApi')->error(pint_r($e,true));
+            Log::channel('WgApi')->error(print_r($e,true));
                 die($e->getMessage());
         }
         
         Log::channel('WgApi')->info('syncPlayerTest END '.$account_id);
     }
     
-    private function updateShipStat($type, &$shipStat, $shipStatDetail, $shipRating, $wg_ship_stats_type) {
-//        echo "<h2>".$ship_stats->ship_id." PR: " . round($shipRating["pr"]) . "</h2>";
-//        echo "<strong>Win Rate: " . round($shipRating["wr"], 2) . "%</strong><br />\n";
-//        echo "<strong>Avg Damage: " . round($shipRating["avgDamage"]) . "</strong><br />\n";
-//        echo "<strong>Avg frags: " . round($shipRating["avgFrags"],2) . "</strong><br />\n";
+    private function syncClanInfo(&$player, $account_id) {
+        //Sync Clan Info
+        $apiDateStart = round(microtime(true) * 1000);
+        $data = $this->api->get('wows/clans/accountinfo', 
+                    ['account_id'=>$account_id, 
+                        'extra'=> 'clan']
+                    );
+        $apiDateEnd = round(microtime(true) * 1000);
 
+        Log::channel('WgApi')->info('API-CALL wows/clans/accountinfo '.($apiDateEnd-$apiDateStart).' ms '.$account_id);
+        Log::channel('WgApi')->debug(print_r($data,true));
+
+        $api_accountinfo_clans = $data->{$account_id};
+
+        if ($player->clan_clan_id <> $api_accountinfo_clans->clan_id) {
+            Log::channel('WgApi')->info('Clan change detected '.$api_accountinfo_clans->clan_id.' '.$player->clan_id);
+            //TODO Hook
+
+            $created_at = $api_accountinfo_clans->clan->created_at; 
+
+            $clan = Clan::byId($api_accountinfo_clans->clan->clan_id)
+                    ->firstOrCreate(['id'   => $api_accountinfo_clans->clan->clan_id,
+                        'wg_created_at'     => new \DateTime(("@$created_at")), 
+                        'members_count'     => $api_accountinfo_clans->clan->members_count,
+                        'name'              => $api_accountinfo_clans->clan->name,
+                        'tag'               => $api_accountinfo_clans->clan->tag]);
+            if ($clan->wasRecentlyCreated === true) {
+                Log::channel('WgApi')->info('New Clan created '.$api_accountinfo_clans->clan->clan_id.' ['.$api_accountinfo_clans->clan->tag.'] '.$api_accountinfo_clans->clan->name);
+                //TODO Hook
+
+            }
+
+        }
+
+        if ($player->clan_role <> $api_accountinfo_clans->role) {
+            Log::channel('WgApi')->info('Role change detected '.$api_accountinfo_clans->role.' '.$player->clan_role);
+            //TODO Hook
+
+        }
+
+        $joined_at = $api_accountinfo_clans->joined_at;           
+
+        $player->clan_clan_id            = $api_accountinfo_clans->clan_id;
+        $player->clan_joined_at          = new \DateTime(("@$joined_at"));
+        $player->clan_role               = $api_accountinfo_clans->role;
+        //End  CLAN LOGIC
+    }
+    
+    private function computeShipRatings($api_ship_stats, $ratingsExpected) {
+        $shipRatings = array();
+        $ship_expected_stats = array();
+        
+        if (!array_key_exists(''.$api_ship_stats->ship_id, $ratingsExpected)) {
+            //We do not have the stats for this ship. Skip this.
+            Log::channel('WgApi')->error('missing ratings for Ship '.$api_ship_stats->ship_id);
+            
+        } else {
+            $ship_expected_stats = $ratingsExpected[''.$api_ship_stats->ship_id];
+            
+            if (empty($ship_expected_stats['average_damage_dealt']) || empty($ship_expected_stats['average_frags']) || empty($ship_expected_stats['win_rate']) ) {
+                //Ship stats are epty
+                Log::channel('WgApi')->error('empty ratings for Ship '.$api_ship_stats->ship_id);
+
+            }
+        }
+
+        //Iterate "pve", "pve_div2", "pve_div3", "pve_solo", "pvp", "pvp_div2", "pvp_div3", "pvp_solo", "rank_solo" etc...
+        foreach ($this->syncedStats as $type) {
+            //Skip the type where we did not play any battles
+            if ($api_ship_stats->$type->battles > 0) {
+                $shipRatings[$type] = $this->computeShipRating($api_ship_stats->$type, $ship_expected_stats);
+            }
+        }
+        
+        return $shipRatings;
+        
+    }
+    
+    private function updateShipStat($type, &$shipStat, $shipStatDetail, $shipRating, $wg_ship_stats_type) {
         $shipStat->{$type.'_wr'}                = $shipRating["wr"];
         $shipStat->{$type.'_pr'}                = $shipRating["pr"];
         $shipStat->{$type.'_wtr'}               = null;                 //TODO
         $shipStat->{$type.'_battles'}           = $wg_ship_stats_type->battles;
-        $shipStat->{$type.'_last_battle_time'}  = $shipStatDetail->last_battle_time;                 //TODO
+        $shipStat->{$type.'_last_battle_time'}  = $shipStatDetail->last_battle_time; 
         $shipStat->{$type.'_ship_stat_details_id'} = $shipStatDetail->id;
     }
     
@@ -307,8 +459,7 @@ class SyncPlayer extends Command
     
     private function computeShipRating($account_stats, $ship_expected_stats)
     {
-        //TODO: Fix Division by zero
-        $battles = $account_stats->battles > 0 ? $account_stats->battles : 1;
+        $battles = $account_stats->battles;
         $damage_dealt = $account_stats->damage_dealt;
         $wins = $account_stats->wins;
         $frags = $account_stats->frags;
@@ -317,35 +468,79 @@ class SyncPlayer extends Command
         $average_win_rate = (100 * $wins / $battles);
         $average_frags = ($frags / $battles);
 
-        /**
-         * Step 1 - ratios:
-         * rDmg = actualDmg/expectedDmg
-         * rWins = actualWins/expectedWins
-         * rFrags = actualFrags/expectedFrags
-         **/ 
+        $pr = null;
+        
+        if (!empty($ship_expected_stats)) {
+        
+            /**
+             * Step 1 - ratios:
+             * rDmg = actualDmg/expectedDmg
+             * rWins = actualWins/expectedWins
+             * rFrags = actualFrags/expectedFrags
+             **/ 
 
-        $rDmg = ($average_damage_dealt /  $ship_expected_stats['average_damage_dealt']);
-        $rFrags = $average_frags / ($ship_expected_stats['average_frags']);
-        $rWins = $average_win_rate / $ship_expected_stats['win_rate'];
-        
-        /** 
-         * Step 2 - normalization:
-         * nDmg = max(0, (rDmg - 0.4) / (1 - 0.4))
-         * nFrags = max(0, (rFrags - 0.1) / (1 - 0.1))
-         * nWins = max(0, (rWins - 0.7) / (1 - 0.7)) 
-         */
+            $rDmg = ($average_damage_dealt /  $ship_expected_stats['average_damage_dealt']);
+            $rFrags = $average_frags / ($ship_expected_stats['average_frags']);
+            $rWins = $average_win_rate / $ship_expected_stats['win_rate'];
 
-        $nDmg = max(0, ($rDmg - 0.4) / (1 - 0.4));
-        $nFrags = max(0, ($rFrags - 0.1) / (1 - 0.1));
-        $nWins = max(0, ($rWins - 0.7) / (1 - 0.7));
-        
-        /** 
-         * Step 3 - PR value:
-         * PR =  700*nDMG + 300*nFrags + 150*nWins
-         **/
-        
-        $pr = 700 * $nDmg + 300 * $nFrags + 150 * $nWins;
+            /** 
+             * Step 2 - normalization:
+             * nDmg = max(0, (rDmg - 0.4) / (1 - 0.4))
+             * nFrags = max(0, (rFrags - 0.1) / (1 - 0.1))
+             * nWins = max(0, (rWins - 0.7) / (1 - 0.7)) 
+             */
+
+            $nDmg = max(0, ($rDmg - 0.4) / (1 - 0.4));
+            $nFrags = max(0, ($rFrags - 0.1) / (1 - 0.1));
+            $nWins = max(0, ($rWins - 0.7) / (1 - 0.7));
+
+            /** 
+             * Step 3 - PR value:
+             * PR =  700*nDMG + 300*nFrags + 150*nWins
+             **/
+
+            $pr = 700 * $nDmg + 300 * $nFrags + 150 * $nWins;
+            
+        }
         
         return array( "pr" => $pr,  "wr" => $average_win_rate,  "avgDamage" => $average_damage_dealt, "avgFrags" => $average_frags);
+    }
+    
+    private function shipStatsChangeDetected($shipStat, $historyShipStat, $syncedStats)
+    {
+        if ($shipStat->battles <> $historyShipStat->battles) {
+            Log::channel('WgApi')->info('Battle Number Change Detected. ' . $shipStat->battles. ' ' . $historyShipStat->battles);
+            return true;
+        }
+                
+        foreach ($syncedStats as $type) {
+            
+            if ($shipStat->{$type.'_wr'} <>  $historyShipStat->{$type.'_wr'} ) {
+                Log::channel('WgApi')->info($type.'WR Change Detected. ' . $shipStat->{$type.'_wr'}. ' ' . $historyShipStat->{$type.'_wr'});
+                return true;
+            }
+            
+            if ($shipStat->{$type.'_pr'} <>  $historyShipStat->{$type.'_pr'} ) {
+                Log::channel('WgApi')->info($type.'PR Change Detected. ' . $shipStat->{$type.'_pr'}. ' ' . $historyShipStat->{$type.'_pr'});
+                return true;
+            }
+            
+            if ($shipStat->{$type.'_wtr'} <>  $historyShipStat->{$type.'_wtr'} ) {
+                Log::channel('WgApi')->info($type.'WTR Change Detected. ' . $shipStat->{$type.'_wtr'}. ' ' . $historyShipStat->{$type.'_wtr'});
+                return true;
+            }
+            
+            if ($shipStat->{$type.'_battles'} <>  $historyShipStat->{$type.'_battles'} ) {
+                Log::channel('WgApi')->info($type.'BATTLES Change Detected. ' . $shipStat->{$type.'_battles'}. ' ' . $historyShipStat->{$type.'_battles'});
+                return true;
+            }
+            
+            if ($shipStat->{$type.'_last_battle_time'} <>  $historyShipStat->{$type.'_last_battle_time'} ) {
+                Log::channel('WgApi')->info($type.'LBT Change Detected. ' . $shipStat->{$type.'_last_battle_time'}. ' ' . $historyShipStat->{$type.'_last_battle_time'});
+                return true;
+            }
+        }
+        
+        return false;
     }
 }
