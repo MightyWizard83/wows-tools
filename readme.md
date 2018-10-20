@@ -13,3 +13,6 @@
 -> ;curl.cainfo <br />
 -> Change it to: <br />
 -> curl.cainfo = "C:\wamp64\bin\php\php7.1.9\cacert.pem" <br />
+
+7)php artisan update_ratings
+8)php artisan schedule:run
