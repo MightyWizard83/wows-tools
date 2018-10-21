@@ -16,3 +16,6 @@
 
 7)php artisan update_ratings
 8)php artisan schedule:run
+
+crontab -e
+* * * * * cd /path-to-your-project && php artisan schedule:run >> /dev/null 2>&1

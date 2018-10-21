@@ -62,6 +62,20 @@ php artisan key:generate
 
 https://www.digitalocean.com/community/tutorials/how-to-install-and-secure-phpmyadmin-on-ubuntu-16-04
 
+##Workaround bug7.2
+https://stackoverflow.com/questions/48001569/phpmyadmin-count-parameter-must-be-an-array-or-an-object-that-implements-co
+
+Edit file /usr/share/phpmyadmin/libraries/sql.lib.php:
+
+sudo nano /usr/share/phpmyadmin/libraries/sql.lib.php
+Replace: count($analyzed_sql_results['select_expr'] == 1)
+
+With:  (count($analyzed_sql_results['select_expr']) == 1)
+
+Restart the server
+
+sudo service apache2 restart
+
 
 ##Step 6 – Apache Configuration
 
